@@ -64,14 +64,15 @@ npm run dev
 
 Соискательский API закрыт. Основной путь — **скрапинг** под вашим аккаунтом.
 
-1. В `.env`: `HH_EMAIL`, `HH_PASSWORD`, при необходимости `HH_SCRAPE_KEYWORDS`
-2. Один раз сохранить сессию:
+1. В `.env`: `DATABASE_URL`, `HH_EMAIL`, `HH_PASSWORD`, `HH_SCRAPE_KEYWORD` (например `Frontend разработчик`)
+
+2. Полный цикл — **одна команда** (логин → поиск по ключевому слову → обход страниц выдачи → карточки `/vacancy/{id}` → запись в Supabase):
 
 ```bash
-npm run playwright:auth
+npm run hh:run
 ```
 
-3. Сбор вакансий в БД:
+Если сессия в `.auth/` уже сохранена и не истекла, можно без повторного логина:
 
 ```bash
 npm run hh:scrape
@@ -98,8 +99,9 @@ npm run hh:sync
 | `npm run lint`            | ESLint                                   |
 | `npm run db:migrate`      | Apply migrations                         |
 | `npm run db:studio`       | Prisma Studio                            |
-| `npm run playwright:auth` | Login hh.ru → `.auth/hh-user.json`       |
-| `npm run hh:scrape`       | Scrape vacancies → DB                    |
+| `npm run hh:run`          | Auth + search + vacancy pages → DB       |
+| `npm run hh:scrape`       | То же без повторного логина (нужна сессия) |
+| `npm run playwright:auth` | Только логин → `.auth/hh-user.json`      |
 | `npm run hh:sync`         | HeadHunter API sync (if token available) |
 
 ## Project structure

@@ -1,11 +1,3 @@
-export type ScrapedVacancyListItem = {
-  hhId: string;
-  title: string | null;
-  company: string | null;
-  salary: string | null;
-  url: string;
-};
-
 export type ScrapedVacancyDetail = {
   hhId: string;
   title: string;

@@ -1,11 +1,12 @@
 import "dotenv/config";
 
 import { syncVacanciesFromScrape } from "../src/services/vacancy-scrape-sync.js";
+import { logInfo } from "../src/utils/log.js";
 import { prisma } from "../src/db/client.js";
 
 const result = await syncVacanciesFromScrape();
 
-console.log(JSON.stringify(result, null, 2));
+logInfo(`summary ${JSON.stringify(result)}`);
 
 await prisma.$disconnect();
 

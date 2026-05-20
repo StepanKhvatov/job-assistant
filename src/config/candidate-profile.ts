@@ -7,7 +7,13 @@ export const CANDIDATE_PROFILE = {
   targetRole: "Frontend-разработчик",
 
   /**
-   * Ключевые слова по умолчанию для hh.ru, если в .env не заданы HH_KEYWORDS / HH_SEARCH_TEXT.
+   * Фраза для Playwright-поиска (`?text=`), если не задан HH_SCRAPE_KEYWORD / HH_SEARCH_TEXT.
+   * Пробелы и кириллица — как в строке поиска на сайте («Frontend разработчик»).
+   */
+  defaultScrapeKeyword: "Frontend разработчик",
+
+  /**
+   * Ключевые слова по умолчанию для hh.ru API, если в .env не заданы HH_KEYWORDS / HH_SEARCH_TEXT.
    * Короткий OR-набор — шире выдача; точнее настраивайте через .env.
    */
   defaultHhKeywords: ["Frontend", "React", "TypeScript", "JavaScript", "Next.js"] as const,

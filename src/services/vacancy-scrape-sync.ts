@@ -2,56 +2,25 @@ import { chromium } from "playwright";
 
 import { assertValidHhAuth, HH_AUTH_PROVIDER } from "../playwright/auth.js";
 import { buildSearchUrl, resolveScrapeEnv, type ScrapeEnv } from "../playwright/config.js";
-import { collectVacanciesFromSearch } from "../playwright/search.js";
+import { collectVacancyIdsFromSearch } from "../playwright/search.js";
 import type { ScrapeSyncResult } from "../playwright/types.js";
-import { scrapeVacancyDetail } from "../playwright/vacancy-page.js";
-import { prisma } from "../db/client.js";
+import { scrapeVacancyDetailById } from "../playwright/vacancy-page.js";
+import { logInfo, logScrapeFail } from "../utils/log.js";
+import { upsertScrapedVacancy } from "./upsert-vacancy.js";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function upsertScrapedVacancy(
-  data: {
-    hhId: string;
-    title: string;
-    company: string | null;
-    salary: string | null;
-    url: string;
-    description: string | null;
-    publishedAt: Date | null;
-  },
-  errors: string[],
-) {
-  try {
-    await prisma.vacancy.upsert({
-      where: { hhId: data.hhId },
-      create: data,
-      update: {
-        title: data.title,
-        company: data.company,
-        salary: data.salary,
-        url: data.url,
-        description: data.description,
-        publishedAt: data.publishedAt,
-      },
-    });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    errors.push(`hh_id=${data.hhId}: ${msg}`);
-  }
 }
 
 export async function syncVacanciesFromScrape(
   options?: Partial<ScrapeEnv>,
 ): Promise<ScrapeSyncResult> {
   const env = { ...resolveScrapeEnv(), ...options };
-  const keyword = env.keywords.split(",")[0]?.trim() || "Frontend";
-  const searchUrl = buildSearchUrl(env.baseUrl, keyword);
+  const { searchKeyword: keyword, baseUrl } = env;
+  const searchUrl = buildSearchUrl(baseUrl, keyword);
 
-  assertValidHhAuth(env.authStatePath, env.authMetaPath, env.baseUrl);
-
-  console.log(`[job-assistant][${HH_AUTH_PROVIDER}] Using saved session for ${env.baseUrl}`);
+  assertValidHhAuth(env.authStatePath, env.authMetaPath, baseUrl);
+  logInfo(`[${HH_AUTH_PROVIDER}] session ok base=${baseUrl}`);
 
   const errors: string[] = [];
   const browser = await chromium.launch({ headless: env.headless });
@@ -64,33 +33,54 @@ export async function syncVacanciesFromScrape(
     });
     const page = await context.newPage();
 
-    const list = await collectVacanciesFromSearch(page, searchUrl, env.baseUrl, env.maxSearchPages);
+    logInfo(`search keyword="${keyword}"`);
+    const vacancyIds = await collectVacancyIdsFromSearch(
+      page,
+      baseUrl,
+      keyword,
+      env.maxSearchPages,
+    );
+    logInfo(`search done ids=${vacancyIds.length} url=${searchUrl}`);
 
-    const toProcess = list.slice(0, env.maxVacanciesDetail);
-    const skippedOverLimit = Math.max(0, list.length - toProcess.length);
+    const toProcess = vacancyIds.slice(0, env.maxVacanciesDetail);
+    const skippedOverLimit = Math.max(0, vacancyIds.length - toProcess.length);
+    if (skippedOverLimit > 0) {
+      logInfo(`limit skip=${skippedOverLimit} (HH_SCRAPE_MAX_VACANCIES=${env.maxVacanciesDetail})`);
+    }
+
     let upserted = 0;
+    const total = toProcess.length;
 
-    for (const item of toProcess) {
-      const before = errors.length;
+    for (let i = 0; i < total; i++) {
+      const hhId = toProcess[i];
+      logInfo(`vacancy ${i + 1}/${total} hh_id=${hhId}`);
+
       try {
-        const detail = await scrapeVacancyDetail(page, env.baseUrl, item);
-        await upsertScrapedVacancy(detail, errors);
-        if (errors.length === before) {
+        const detail = await scrapeVacancyDetailById(page, baseUrl, hhId);
+        if (await upsertScrapedVacancy(detail)) {
           upserted++;
+        } else {
+          errors.push(`hh_id=${hhId}: db upsert failed`);
         }
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        errors.push(`hh_id=${item.hhId}: ${msg}`);
+        logScrapeFail(hhId, msg);
+        errors.push(`hh_id=${hhId}: ${msg}`);
       }
+
       await sleep(env.detailDelayMs);
     }
 
     await context.close();
 
+    logInfo(
+      `finished upserted=${upserted} failed=${errors.length} ids_found=${vacancyIds.length}`,
+    );
+
     return {
       keyword,
       searchUrl,
-      listCount: list.length,
+      listCount: vacancyIds.length,
       detailLimit: env.maxVacanciesDetail,
       upserted,
       skippedOverLimit,

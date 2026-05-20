@@ -20,6 +20,7 @@
     "db:studio": "prisma studio",
     "hh:sync": "tsx scripts/hh-sync-once.ts",
     "playwright:auth": "playwright test --project=setup",
+    "hh:run": "npm run playwright:auth && npm run hh:scrape",
     "hh:scrape": "tsx scripts/hh-scrape-once.ts"
   },
   "repository": {
