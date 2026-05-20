@@ -9,6 +9,15 @@ declare module "fastify" {
       DATABASE_URL: string;
       DIRECT_URL?: string;
       CRON_SECRET?: string;
+      HH_SEARCH_TEXT?: string;
+      HH_KEYWORDS?: string;
+      HH_BASE_URL?: string;
+      HH_USER_AGENT?: string;
+      HH_MAX_PAGES_PER_QUERY?: string;
+      HH_DETAIL_DELAY_MS?: string;
+      HH_INCLUDE_OFFICE?: string;
+      HH_INCLUDE_REMOTE?: string;
+      HH_MAX_VACANCIES_DETAIL?: string;
     };
   }
 }
