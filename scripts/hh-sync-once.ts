@@ -15,6 +15,12 @@ if (!userAgent) {
   process.exit(1);
 }
 
+const accessToken = process.env.HH_ACCESS_TOKEN?.trim();
+if (!accessToken) {
+  console.error("Set HH_ACCESS_TOKEN from https://dev.hh.ru/admin");
+  process.exit(1);
+}
+
 const maxPages = Math.min(
   20,
   Math.max(1, Number.parseInt(process.env.HH_MAX_PAGES_PER_QUERY ?? "5", 10) || 5),
@@ -32,6 +38,7 @@ const maxVacanciesDetail = Math.min(
 const result = await syncVacanciesFromHh({
   searchText,
   userAgent,
+  accessToken,
   baseUrl: process.env.HH_BASE_URL?.trim() || HH_DEFAULT_BASE_URL,
   maxPagesPerQuery: maxPages,
   detailDelayMs,

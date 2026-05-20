@@ -18,7 +18,6 @@ cp .env.example .env
 ```
 
 2. Fill connection strings from Supabase → **Connect**:
-
    - `DATABASE_URL` — **Transaction mode**, port **6543**, add `?pgbouncer=true`
    - `DIRECT_URL` — **Session mode**, port **5432** (same pooler host, not `db.*.supabase.co`)
 
@@ -34,7 +33,6 @@ npm run db:migrate:deploy
 > `npm run db:migrate` / `db:migrate:deploy` do this automatically.
 
 4. Configure **HeadHunter** (публичный API, без OAuth):
-
    - `HH_USER_AGENT` — обязателен для hh.ru, укажите контакт, например:  
      `job-assistant/1.0 (+https://github.com/ВАШ_ЛОГИН/job-assistant)`
    - `HH_KEYWORDS` — ключевые слова **через запятую** (в поиске объединяются через **OR**), например:  
@@ -42,7 +40,6 @@ npm run db:migrate:deploy
    - или задайте целиком строку поиска: `HH_SEARCH_TEXT` (имеет приоритет над ключевыми словами)
 
    Поиск по умолчанию:
-
    - **Офлайн / Новосибирск** — `area=4` (город), без фильтра `schedule=remote`
    - **Удалёнка / Россия** — `area=113`, `schedule=remote`
 
@@ -63,34 +60,47 @@ npm run dev
 - http://localhost:3000/health
 - http://localhost:3000/health/db
 
-## HH.ru sync (Stage 1)
+## HH.ru — сбор вакансий (рекомендуется: Playwright)
 
-Сервер запущен — один раз подтянуть вакансии в БД:
+Соискательский API закрыт. Основной путь — **скрапинг** под вашим аккаунтом.
+
+1. В `.env`: `HH_EMAIL`, `HH_PASSWORD`, при необходимости `HH_SCRAPE_KEYWORDS`
+2. Один раз сохранить сессию:
 
 ```bash
-curl -sS -X POST http://localhost:3000/internal/hh/sync \
-  -H "x-cron-secret: YOUR_CRON_SECRET"
+npm run playwright:auth
 ```
 
-Или без HTTP-сервера (удобно для GitHub Actions):
+3. Сбор вакансий в БД:
+
+```bash
+npm run hh:scrape
+```
+
+Подробнее: [docs/SCRAPING.md](docs/SCRAPING.md)
+
+### Альтернатива: API (токен приложения)
+
+Если dev.hh.ru выдал токен приложения:
 
 ```bash
 npm run hh:sync
+# или POST /internal/hh/sync с x-cron-secret
 ```
-
-Ответ JSON: `officeCount`, `remoteCount`, `uniqueListCount`, `detailLimit`, `upserted`, `skippedOverLimit`, при ошибках по отдельным вакансиям — `errors[]`.
 
 ## Scripts
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Dev server with hot reload |
-| `npm run build` | Compile TypeScript |
-| `npm run start` | Run compiled app |
-| `npm run lint` | ESLint |
-| `npm run db:migrate` | Apply migrations |
-| `npm run db:studio` | Prisma Studio |
-| `npm run hh:sync` | HeadHunter sync once (CLI) |
+| Script                    | Description                              |
+| ------------------------- | ---------------------------------------- |
+| `npm run dev`             | Dev server with hot reload               |
+| `npm run build`           | Compile TypeScript                       |
+| `npm run start`           | Run compiled app                         |
+| `npm run lint`            | ESLint                                   |
+| `npm run db:migrate`      | Apply migrations                         |
+| `npm run db:studio`       | Prisma Studio                            |
+| `npm run playwright:auth` | Login hh.ru → `.auth/hh-user.json`       |
+| `npm run hh:scrape`       | Scrape vacancies → DB                    |
+| `npm run hh:sync`         | HeadHunter API sync (if token available) |
 
 ## Project structure
 
@@ -103,7 +113,7 @@ src/
   integrations/  # HH, DeepSeek
   workers/         # cron jobs
   telegram/
-  playwright/
+  playwright/    # search + vacancy page parsers
   prompts/
   utils/
 prisma/

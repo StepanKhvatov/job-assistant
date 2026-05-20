@@ -9,6 +9,8 @@ import type { HhVacanciesSearchResponse, HhVacancyDetail, HhVacancyListItem } fr
 export type HhClientOptions = {
   baseUrl?: string;
   userAgent: string;
+  /** Токен приложения с https://dev.hh.ru/admin (обязателен для /vacancies) */
+  accessToken?: string;
   detailDelayMs?: number;
 };
 
@@ -19,11 +21,13 @@ function sleep(ms: number) {
 export class HhApiClient {
   private readonly baseUrl: string;
   private readonly userAgent: string;
+  private readonly accessToken?: string;
   private readonly detailDelayMs: number;
 
   constructor(options: HhClientOptions) {
     this.baseUrl = (options.baseUrl ?? HH_DEFAULT_BASE_URL).replace(/\/$/, "");
     this.userAgent = options.userAgent;
+    this.accessToken = options.accessToken?.trim() || undefined;
     this.detailDelayMs = options.detailDelayMs ?? HH_DEFAULT_DETAIL_DELAY_MS;
   }
 
@@ -96,12 +100,15 @@ export class HhApiClient {
 
     while (attempt < maxAttempts) {
       attempt++;
-      const response = await fetch(url, {
-        headers: {
-          "User-Agent": this.userAgent,
-          Accept: "application/json",
-        },
-      });
+      const headers: Record<string, string> = {
+        "User-Agent": this.userAgent,
+        Accept: "application/json",
+      };
+      if (this.accessToken) {
+        headers.Authorization = `Bearer ${this.accessToken}`;
+      }
+
+      const response = await fetch(url, { headers });
 
       if (response.status === 429) {
         const retryAfter = Number(response.headers.get("retry-after")) || 2 ** attempt;

@@ -7,6 +7,12 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   prettier,
   {
-    ignores: ["dist/**", "src/generated/**", "node_modules/**"],
+    ignores: [
+      "dist/**",
+      "src/generated/**",
+      "node_modules/**",
+      "playwright-report/**",
+      "test-results/**",
+    ],
   },
 );

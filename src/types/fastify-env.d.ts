@@ -13,6 +13,7 @@ declare module "fastify" {
       HH_KEYWORDS?: string;
       HH_BASE_URL?: string;
       HH_USER_AGENT?: string;
+      HH_ACCESS_TOKEN?: string;
       HH_MAX_PAGES_PER_QUERY?: string;
       HH_DETAIL_DELAY_MS?: string;
       HH_INCLUDE_OFFICE?: string;

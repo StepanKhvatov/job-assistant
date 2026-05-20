@@ -13,8 +13,10 @@ export const envSchema = {
     /** Ключевые слова через запятую → OR-запрос в hh.ru */
     HH_KEYWORDS: { type: "string", default: "" },
     HH_BASE_URL: { type: "string", default: "https://api.hh.ru" },
-    /** Обязательно для hh.ru: контакт в User-Agent */
+    /** Обязательно для hh.ru: контакт в User-Agent (email в скобках) */
     HH_USER_AGENT: { type: "string", default: "" },
+    /** Токен приложения: https://dev.hh.ru/admin → ваше приложение → access_token */
+    HH_ACCESS_TOKEN: { type: "string", default: "" },
     HH_MAX_PAGES_PER_QUERY: { type: "string", default: "5" },
     HH_DETAIL_DELAY_MS: { type: "string", default: "350" },
     /** "false" — не искать офлайн в Новосибирске */

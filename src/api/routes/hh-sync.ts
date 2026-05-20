@@ -36,8 +36,14 @@ export async function hhSyncRoutes(app: FastifyInstance) {
     const userAgent = app.config.HH_USER_AGENT?.trim();
     if (!userAgent) {
       return reply.status(400).send({
-        error:
-          "Set HH_USER_AGENT (e.g. job-assistant/1.0 (+https://github.com/you/job-assistant)) — required by hh.ru API",
+        error: "Set HH_USER_AGENT (e.g. job-assistant/1.0 (you@email.com)) — required by hh.ru API",
+      });
+    }
+
+    const accessToken = app.config.HH_ACCESS_TOKEN?.trim();
+    if (!accessToken) {
+      return reply.status(400).send({
+        error: "Set HH_ACCESS_TOKEN from https://dev.hh.ru/admin (application access token)",
       });
     }
 
@@ -63,6 +69,7 @@ export async function hhSyncRoutes(app: FastifyInstance) {
     const result = await syncVacanciesFromHh({
       searchText,
       userAgent,
+      accessToken,
       baseUrl,
       maxPagesPerQuery: maxPages,
       detailDelayMs,

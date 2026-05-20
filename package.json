@@ -18,7 +18,9 @@
     "db:migrate:deploy": "node scripts/run-with-direct-url.mjs migrate deploy",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "hh:sync": "tsx scripts/hh-sync-once.ts"
+    "hh:sync": "tsx scripts/hh-sync-once.ts",
+    "playwright:auth": "playwright test --project=setup",
+    "hh:scrape": "tsx scripts/hh-scrape-once.ts"
   },
   "repository": {
     "type": "git",
@@ -35,6 +37,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.60.0",
     "@types/node": "^25.9.1",
     "@types/pg": "^8.20.0",
     "eslint": "^10.4.0",

@@ -17,6 +17,7 @@ import { prisma } from "../db/client.js";
 export type VacancySyncOptions = {
   searchText: string;
   userAgent: string;
+  accessToken?: string;
   baseUrl?: string;
   maxPagesPerQuery?: number;
   detailDelayMs?: number;
@@ -79,6 +80,7 @@ export async function syncVacanciesFromHh(options: VacancySyncOptions): Promise<
   const client = new HhApiClient({
     baseUrl: options.baseUrl,
     userAgent: options.userAgent,
+    accessToken: options.accessToken,
     detailDelayMs: options.detailDelayMs,
   });
 
@@ -120,10 +122,7 @@ export async function syncVacanciesFromHh(options: VacancySyncOptions): Promise<
     return tb - ta;
   });
 
-  const detailLimit = Math.min(
-    2000,
-    Math.max(1, options.maxVacanciesDetail ?? 200),
-  );
+  const detailLimit = Math.min(2000, Math.max(1, options.maxVacanciesDetail ?? 200));
   const toProcess = list.slice(0, detailLimit);
   const skippedOverLimit = Math.max(0, list.length - toProcess.length);
 
@@ -159,7 +158,10 @@ export function resolveSearchTextFromEnv(env: {
 
   const raw = env.HH_KEYWORDS?.trim();
   if (raw) {
-    const keywords = raw.split(",").map((k) => k.trim()).filter(Boolean);
+    const keywords = raw
+      .split(",")
+      .map((k) => k.trim())
+      .filter(Boolean);
     return buildSearchTextFromKeywords(keywords);
   }
 

@@ -10,13 +10,7 @@ export const CANDIDATE_PROFILE = {
    * Ключевые слова по умолчанию для hh.ru, если в .env не заданы HH_KEYWORDS / HH_SEARCH_TEXT.
    * Короткий OR-набор — шире выдача; точнее настраивайте через .env.
    */
-  defaultHhKeywords: [
-    "Frontend",
-    "React",
-    "TypeScript",
-    "JavaScript",
-    "Next.js",
-  ] as const,
+  defaultHhKeywords: ["Frontend", "React", "TypeScript", "JavaScript", "Next.js"] as const,
 
   /**
    * Навыки из блока «Навыки» резюме (для промптов DeepSeek и т.п.).

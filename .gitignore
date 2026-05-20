@@ -7,3 +7,8 @@ coverage
 src/generated
 
 .DS_Store
+
+.auth/
+playwright-report/
+test-results/
+blob-report/
