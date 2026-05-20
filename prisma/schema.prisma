@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Vacancy {
+  id          String   @id @default(cuid())
+  hhId        String   @unique @map("hh_id")
+  title       String
+  company     String?
+  salary      String?
+  url         String
+  description String?  @db.Text
+  publishedAt DateTime? @map("published_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  analyses     Analysis[]
+  applications Application[]
+
+  @@map("vacancies")
+}
+
+model Analysis {
+  id            String   @id @default(cuid())
+  vacancyId     String   @map("vacancy_id")
+  vacancy       Vacancy  @relation(fields: [vacancyId], references: [id], onDelete: Cascade)
+  score         Int
+  summary       String?  @db.Text
+  pros          Json?
+  cons          Json?
+  applyDecision Boolean? @map("apply_decision")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([vacancyId])
+  @@index([score])
+  @@map("analyses")
+}
+
+model Application {
+  id          String    @id @default(cuid())
+  vacancyId   String    @map("vacancy_id")
+  vacancy     Vacancy   @relation(fields: [vacancyId], references: [id], onDelete: Cascade)
+  status      String
+  coverLetter String?   @map("cover_letter") @db.Text
+  appliedAt   DateTime? @map("applied_at")
+  response    String?   @db.Text
+
+  @@index([vacancyId])
+  @@index([status])
+  @@map("applications")
+}
