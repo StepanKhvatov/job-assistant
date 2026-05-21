@@ -25,5 +25,10 @@ export const envSchema = {
     HH_INCLUDE_REMOTE: { type: "string", default: "true" },
     /** Сколько вакансий максимум подтянуть с полным описанием за один sync (остальные пропускаются) */
     HH_MAX_VACANCIES_DETAIL: { type: "string", default: "200" },
+    DEEPSEEK_API_KEY: { type: "string", default: "" },
+    DEEPSEEK_MODEL: { type: "string", default: "deepseek-chat" },
+    DEEPSEEK_BASE_URL: { type: "string", default: "https://api.deepseek.com" },
+    AI_RANK_LIMIT: { type: "string", default: "20" },
+    AI_RANK_DELAY_MS: { type: "string", default: "500" },
   },
 } as const;

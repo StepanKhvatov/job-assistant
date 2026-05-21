@@ -19,6 +19,11 @@ declare module "fastify" {
       HH_INCLUDE_OFFICE?: string;
       HH_INCLUDE_REMOTE?: string;
       HH_MAX_VACANCIES_DETAIL?: string;
+      DEEPSEEK_API_KEY?: string;
+      DEEPSEEK_MODEL?: string;
+      DEEPSEEK_BASE_URL?: string;
+      AI_RANK_LIMIT?: string;
+      AI_RANK_DELAY_MS?: string;
     };
   }
 }
