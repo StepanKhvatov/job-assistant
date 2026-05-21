@@ -1,6 +1,6 @@
 # job-assistant
 
-Personal AI-assisted job search: HH.ru ingestion, AI ranking, Telegram approve/reject, semi-auto apply via Playwright.
+Personal AI-assisted job search: HH.ru scrape → AI ranking → auto-apply via Playwright.
 
 **Stack:** Node.js, TypeScript, Fastify, Prisma, Supabase (Postgres), GitHub Actions, Telegram, DeepSeek.
 
@@ -91,7 +91,7 @@ npm run ai:rank
 
 Профиль и правила оценки — Markdown в `content/` (в т.ч. **нет высшего образования**).
 
-Подробнее: [docs/AI_RANK.md](docs/AI_RANK.md), схема БД: [docs/DATABASE.md](docs/DATABASE.md)
+Подробнее: [docs/AI_RANK.md](docs/AI_RANK.md), автоотклик: [docs/APPLY.md](docs/APPLY.md), БД: [docs/DATABASE.md](docs/DATABASE.md)
 
 ### Альтернатива: API (токен приложения)
 
@@ -116,6 +116,8 @@ npm run hh:sync
 | `npm run hh:scrape`       | То же без повторного логина (нужна сессия) |
 | `npm run ai:rank`         | DeepSeek → score в `analyses`              |
 | `npm run db:cleanup`      | Удаление вакансий старше N дней (retention) |
+| `npm run hh:apply`        | Отклик по score (см. APPLY_DRY_RUN)         |
+| `npm run hh:pipeline`     | scrape → rank → apply                       |
 | `npm run playwright:auth` | Только логин → `.auth/hh-user.json`      |
 | `npm run hh:sync`         | HeadHunter API sync (if token available) |
 
@@ -146,6 +148,5 @@ scripts/
 - [x] Stage 1 — HH API integration
 - [x] Stage 2 — Playwright ingestion → `vacancies`
 - [x] Stage 3 — DeepSeek ranking → `analyses`
-- [ ] Stage 4 — Telegram bot
-- [ ] Stage 5 — Playwright apply
-- [ ] Stage 6 — GitHub Actions cron
+- [x] Stage 5 — Playwright auto-apply → `applications`
+- [ ] Stage 6 — GitHub Actions cron (`hh:pipeline`)

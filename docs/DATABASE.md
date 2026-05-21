@@ -50,10 +50,10 @@ npm run db:verify
 | `summary` | `summary` | TEXT | нет |
 | `pros` | `pros` | JSONB | нет |
 | `cons` | `cons` | JSONB | нет |
-| `applyDecision` | `apply_decision` | BOOLEAN | нет (Stage 4 Telegram) |
+| `applyDecision` | `apply_decision` | BOOLEAN | не используется (legacy) |
 | `createdAt` | `created_at` | TIMESTAMPTZ | да |
 
-### `applications` (Stage 5)
+### `applications` (auto-apply)
 
 | Prisma | Колонка PG | Тип |
 | ------ | ---------- | --- |

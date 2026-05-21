@@ -35,6 +35,6 @@ npm run ai:rank
 npm run db:verify
 ```
 
-## Stage 4
+## Дальше
 
-Черновик Telegram: [STAGE4_TELEGRAM.md](./STAGE4_TELEGRAM.md).
+Автоотклик: [APPLY.md](./APPLY.md).

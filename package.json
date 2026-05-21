@@ -24,7 +24,9 @@
     "playwright:auth": "playwright test --project=setup",
     "hh:run": "npm run playwright:auth && npm run hh:scrape",
     "hh:scrape": "tsx scripts/hh-scrape-once.ts",
-    "ai:rank": "tsx scripts/ai-rank-once.ts"
+    "ai:rank": "tsx scripts/ai-rank-once.ts",
+    "hh:apply": "tsx scripts/hh-apply-once.ts",
+    "hh:pipeline": "npm run hh:scrape && npm run ai:rank && npm run hh:apply"
   },
   "repository": {
     "type": "git",

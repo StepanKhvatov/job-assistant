@@ -1,0 +1,184 @@
+import { chromium } from "playwright";
+
+import { resolveApplyEnv, type ApplyEnv } from "../config/apply-env.js";
+import { loadCoverLetter } from "../config/load-content.js";
+import { assertValidHhAuth, HH_AUTH_PROVIDER } from "../playwright/auth.js";
+import { resolveScrapeEnv } from "../playwright/config.js";
+import {
+  applyToVacancy,
+  APPLICATION_FINAL_STATUSES,
+  APPLICATION_STATUS,
+} from "../playwright/apply.js";
+import type { RetentionCleanupResult } from "./vacancy-retention.js";
+import { cleanupStaleVacancies } from "./vacancy-retention.js";
+import { prisma } from "../db/client.js";
+import { logInfo } from "../utils/log.js";
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export type ApplySyncResult = {
+  minScore: number;
+  dryRun: boolean;
+  candidates: number;
+  applied: number;
+  dryRunCount: number;
+  skippedAlready: number;
+  skippedNoButton: number;
+  failed: number;
+  retention: RetentionCleanupResult;
+  errors: string[];
+};
+
+async function saveApplication(
+  vacancyId: string,
+  status: string,
+  coverLetter: string,
+  response: string | null,
+) {
+  await prisma.application.create({
+    data: {
+      vacancyId,
+      status,
+      coverLetter,
+      appliedAt: status === APPLICATION_STATUS.applied ? new Date() : null,
+      response,
+    },
+  });
+}
+
+export async function applyToRankedVacancies(
+  options?: Partial<ApplyEnv>,
+): Promise<ApplySyncResult> {
+  const applyEnv = { ...resolveApplyEnv(), ...options };
+  const scrapeEnv = resolveScrapeEnv();
+  const coverLetter = loadCoverLetter();
+
+  if (!coverLetter) {
+    throw new Error("content/cover-letter.md is empty");
+  }
+
+  assertValidHhAuth(scrapeEnv.authStatePath, scrapeEnv.authMetaPath, scrapeEnv.baseUrl);
+
+  const vacancies = await prisma.vacancy.findMany({
+    where: {
+      applications: {
+        none: { status: { in: [...APPLICATION_FINAL_STATUSES] } },
+      },
+      analyses: { some: { score: { gte: applyEnv.minScore } } },
+    },
+    include: {
+      analyses: { orderBy: { score: "desc" }, take: 1 },
+    },
+    take: 200,
+  });
+
+  vacancies.sort((a, b) => (b.analyses[0]?.score ?? 0) - (a.analyses[0]?.score ?? 0));
+  const toApply = vacancies.slice(0, applyEnv.maxPerRun);
+
+  logInfo(
+    `[${HH_AUTH_PROVIDER}] apply start candidates=${toApply.length} min_score=${applyEnv.minScore} dry_run=${applyEnv.dryRun}`,
+  );
+
+  const errors: string[] = [];
+  let applied = 0;
+  let dryRunCount = 0;
+  let skippedAlready = 0;
+  let skippedNoButton = 0;
+  let failed = 0;
+
+  const browser = await chromium.launch({ headless: applyEnv.headless });
+
+  try {
+    const context = await browser.newContext({
+      storageState: scrapeEnv.authStatePath,
+      locale: "ru-RU",
+      timezoneId: "Asia/Novosibirsk",
+    });
+    const page = await context.newPage();
+
+    for (let i = 0; i < toApply.length; i++) {
+      const vacancy = toApply[i];
+      const score = vacancy.analyses[0]?.score ?? 0;
+      logInfo(`apply ${i + 1}/${toApply.length} hh_id=${vacancy.hhId} score=${score}`);
+
+      try {
+        const result = await applyToVacancy(
+          page,
+          scrapeEnv.baseUrl,
+          vacancy.hhId,
+          coverLetter,
+          applyEnv.dryRun,
+        );
+
+        await saveApplication(
+          vacancy.id,
+          result.status,
+          coverLetter,
+          result.error ?? null,
+        );
+
+        switch (result.status) {
+          case APPLICATION_STATUS.applied:
+            applied++;
+            logInfo(`apply ok hh_id=${vacancy.hhId}`);
+            break;
+          case APPLICATION_STATUS.dryRun:
+            dryRunCount++;
+            logInfo(`apply dry_run hh_id=${vacancy.hhId}`);
+            break;
+          case APPLICATION_STATUS.alreadyApplied:
+            skippedAlready++;
+            logInfo(`apply skip hh_id=${vacancy.hhId} (already applied)`);
+            break;
+          case APPLICATION_STATUS.noButton:
+            skippedNoButton++;
+            logInfo(`apply skip hh_id=${vacancy.hhId} (no button)`);
+            break;
+          default:
+            failed++;
+            console.error(
+              `[job-assistant] apply fail hh_id=${vacancy.hhId} error=${result.error ?? result.status}`,
+            );
+            errors.push(`hh_id=${vacancy.hhId}: ${result.error ?? result.status}`);
+        }
+      } catch (e) {
+        failed++;
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error(`[job-assistant] apply fail hh_id=${vacancy.hhId} error=${msg}`);
+        errors.push(`hh_id=${vacancy.hhId}: ${msg}`);
+        try {
+          await saveApplication(vacancy.id, APPLICATION_STATUS.failed, coverLetter, msg);
+        } catch {
+          /* duplicate or db error */
+        }
+      }
+
+      await sleep(applyEnv.delayMs);
+    }
+
+    await context.close();
+  } finally {
+    await browser.close();
+  }
+
+  const retention = await cleanupStaleVacancies();
+
+  logInfo(
+    `apply finished applied=${applied} dry_run=${dryRunCount} failed=${failed} already=${skippedAlready} no_button=${skippedNoButton}`,
+  );
+
+  return {
+    minScore: applyEnv.minScore,
+    dryRun: applyEnv.dryRun,
+    candidates: toApply.length,
+    applied,
+    dryRunCount,
+    skippedAlready,
+    skippedNoButton,
+    failed,
+    retention,
+    errors,
+  };
+}

@@ -12,9 +12,7 @@ export type RetentionCleanupResult = {
 /**
  * Удаляет устаревшие вакансии. Связанные analyses/applications — CASCADE.
  *
- * Не удаляем:
- * - вакансию с analysis.apply_decision = true (одобрена в Telegram, Stage 4)
- * - вакансию с любой записью в applications (Stage 5)
+ * Не удаляем вакансию, если есть любая запись в `applications` (отклик или попытка).
  */
 export async function cleanupStaleVacancies(
   options?: Partial<RetentionEnv>,
@@ -37,7 +35,6 @@ export async function cleanupStaleVacancies(
   const { count } = await prisma.vacancy.deleteMany({
     where: {
       createdAt: { lt: cutoff },
-      analyses: { none: { applyDecision: true } },
       applications: { none: {} },
     },
   });
