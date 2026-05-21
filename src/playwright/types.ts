@@ -7,13 +7,3 @@ export type ScrapedVacancyDetail = {
   description: string | null;
   publishedAt: Date | null;
 };
-
-export type ScrapeSyncResult = {
-  keyword: string;
-  searchUrl: string;
-  listCount: number;
-  detailLimit: number;
-  upserted: number;
-  skippedOverLimit: number;
-  errors: string[];
-};

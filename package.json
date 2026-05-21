@@ -19,6 +19,7 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:verify": "tsx scripts/verify-db-schema.ts",
+    "db:cleanup": "tsx scripts/db-cleanup.ts",
     "hh:sync": "tsx scripts/hh-sync-once.ts",
     "playwright:auth": "playwright test --project=setup",
     "hh:run": "npm run playwright:auth && npm run hh:scrape",

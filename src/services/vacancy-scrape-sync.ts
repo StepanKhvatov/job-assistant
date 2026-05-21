@@ -3,10 +3,22 @@ import { chromium } from "playwright";
 import { assertValidHhAuth, HH_AUTH_PROVIDER } from "../playwright/auth.js";
 import { buildSearchUrl, resolveScrapeEnv, type ScrapeEnv } from "../playwright/config.js";
 import { collectVacancyIdsFromSearch } from "../playwright/search.js";
-import type { ScrapeSyncResult } from "../playwright/types.js";
+import type { RetentionCleanupResult } from "./vacancy-retention.js";
+
+export type ScrapeSyncResult = {
+  keyword: string;
+  searchUrl: string;
+  listCount: number;
+  detailLimit: number;
+  upserted: number;
+  skippedOverLimit: number;
+  retention: RetentionCleanupResult;
+  errors: string[];
+};
 import { scrapeVacancyDetailById } from "../playwright/vacancy-page.js";
 import { logInfo, logScrapeFail } from "../utils/log.js";
 import { upsertScrapedVacancy } from "./upsert-vacancy.js";
+import { cleanupStaleVacancies } from "./vacancy-retention.js";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -77,6 +89,8 @@ export async function syncVacanciesFromScrape(
       `finished upserted=${upserted} failed=${errors.length} ids_found=${vacancyIds.length}`,
     );
 
+    const retention = await cleanupStaleVacancies();
+
     return {
       keyword,
       searchUrl,
@@ -84,6 +98,7 @@ export async function syncVacanciesFromScrape(
       detailLimit: env.maxVacanciesDetail,
       upserted,
       skippedOverLimit,
+      retention,
       errors,
     };
   } finally {

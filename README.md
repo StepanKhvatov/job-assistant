@@ -115,6 +115,7 @@ npm run hh:sync
 | `npm run hh:run`          | Auth + search + vacancy pages → DB       |
 | `npm run hh:scrape`       | То же без повторного логина (нужна сессия) |
 | `npm run ai:rank`         | DeepSeek → score в `analyses`              |
+| `npm run db:cleanup`      | Удаление вакансий старше N дней (retention) |
 | `npm run playwright:auth` | Только логин → `.auth/hh-user.json`      |
 | `npm run hh:sync`         | HeadHunter API sync (if token available) |
 

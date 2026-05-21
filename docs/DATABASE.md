@@ -64,6 +64,14 @@ npm run db:verify
 | `appliedAt` | `applied_at` | TIMESTAMPTZ |
 | `response` | `response` | TEXT |
 
+## Очистка старых записей
+
+Политика retention (45 дней по умолчанию): [RETENTION.md](./RETENTION.md).
+
+```bash
+npm run db:cleanup
+```
+
 ## Подключение Supabase
 
 - **Runtime** (`DATABASE_URL`): transaction pooler, port **6543**, `?pgbouncer=true`

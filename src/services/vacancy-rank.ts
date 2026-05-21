@@ -5,6 +5,7 @@ import { rankVacancyWithDeepSeek } from "../integrations/deepseek/client.js";
 import { buildRankVacancyMessages } from "../prompts/rank-vacancy.js";
 import { prisma } from "../db/client.js";
 import { logInfo } from "../utils/log.js";
+import { cleanupStaleVacancies, type RetentionCleanupResult } from "./vacancy-retention.js";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -21,6 +22,7 @@ export type RankSyncResult = {
   candidates: number;
   ranked: number;
   skippedNoDescription: number;
+  retention: RetentionCleanupResult;
   errors: string[];
 };
 
@@ -103,10 +105,13 @@ export async function rankUnanalyzedVacancies(
     `ai finished ranked=${ranked} errors=${errors.length} skipped_no_description=${skippedNoDescription}`,
   );
 
+  const retention = await cleanupStaleVacancies();
+
   return {
     candidates: vacancies.length,
     ranked,
     skippedNoDescription,
+    retention,
     errors,
   };
 }
