@@ -1,10 +1,18 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { CANDIDATE_PROFILE } from "./candidate-profile.js";
+
 const CONTENT_DIR = join(process.cwd(), "content");
+
+const SEARCH_SECTION = /##\s*Поиск на hh\.ru\s*\n+([^\n#]+)/i;
 
 function readContentFile(name: string): string {
   return readFileSync(join(CONTENT_DIR, name), "utf8").trim();
+}
+
+export function normalizeSearchKeyword(raw: string): string {
+  return raw.trim().replace(/\s+/g, " ").normalize("NFC");
 }
 
 type ContentCache = {
@@ -26,15 +34,21 @@ function loadAll(): ContentCache {
   return cache;
 }
 
+/** Фраза для `?text=` на hh.ru из секции «Поиск на hh.ru» в candidate-profile.md */
+export function loadSearchKeyword(): string {
+  const match = loadAll().candidateProfile.match(SEARCH_SECTION);
+  const fromMd = match?.[1]?.trim();
+  if (fromMd) {
+    return normalizeSearchKeyword(fromMd);
+  }
+  return CANDIDATE_PROFILE.defaultScrapeKeyword;
+}
+
 export function loadRankContent(): Pick<ContentCache, "rankSystem" | "candidateProfile"> {
   const { rankSystem, candidateProfile } = loadAll();
   return { rankSystem, candidateProfile };
 }
 
-/**
- * Одно сопроводительное для всех откликов (без DeepSeek).
- * Пишите plain text в cover-letter.md (без обязательного markdown).
- */
 export function loadCoverLetter(): string {
   const raw = loadAll().coverLetter;
   return raw

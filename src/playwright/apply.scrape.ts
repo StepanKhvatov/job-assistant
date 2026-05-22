@@ -1,5 +1,6 @@
 import { test } from "@playwright/test";
 
+import { getEnv } from "../config/env.js";
 import { resolveApplyEnv } from "../config/apply-env.js";
 import { loadCoverLetter } from "../config/load-content.js";
 import { assertValidHhAuth, HH_AUTH_PROVIDER } from "./auth.js";
@@ -16,7 +17,7 @@ test("apply to vacancy (dry-run by default)", async ({ page }) => {
   const applyEnv = resolveApplyEnv();
   assertValidHhAuth(scrapeEnv.authStatePath, scrapeEnv.authMetaPath, scrapeEnv.baseUrl);
 
-  const hhId = process.env.HH_VACANCY_ID?.trim();
+  const hhId = getEnv().HH_VACANCY_ID;
   if (!hhId) {
     throw new Error("Set HH_VACANCY_ID in .env (id из URL /vacancy/123456789)");
   }

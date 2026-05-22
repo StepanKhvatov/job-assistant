@@ -22,10 +22,8 @@ export function getHhLoginUrl(baseUrl: string): string {
   return `${baseUrl.replace(/\/$/, "")}/account/login`;
 }
 
-export function resolveAuthPaths(env: NodeJS.ProcessEnv = process.env) {
-  const statePath = env.HH_AUTH_STATE_PATH ?? DEFAULT_AUTH_STATE_PATH;
-  const metaPath = env.HH_AUTH_META_PATH ?? DEFAULT_AUTH_META_PATH;
-  return { statePath, metaPath };
+export function resolveAuthPaths() {
+  return { statePath: DEFAULT_AUTH_STATE_PATH, metaPath: DEFAULT_AUTH_META_PATH };
 }
 
 export function writeHhAuthMeta(metaPath: string, meta: HhAuthSessionMeta): void {

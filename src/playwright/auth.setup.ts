@@ -1,6 +1,7 @@
 import { test as setup, expect } from "@playwright/test";
 import "dotenv/config";
 
+import { getEnv, requireHhCredentials } from "../config/env.js";
 import {
   formatHhAuthLogMessage,
   getHhLoginUrl,
@@ -12,16 +13,8 @@ import {
 const { statePath, metaPath } = resolveAuthPaths();
 
 setup(`authenticate (${HH_AUTH_PROVIDER})`, async ({ page }) => {
-  const email = process.env.HH_EMAIL?.trim();
-  const password = process.env.HH_PASSWORD?.trim();
-  if (!email || !password) {
-    throw new Error("Set HH_EMAIL and HH_PASSWORD in .env");
-  }
-
-  const baseUrl = (process.env.HH_SCRAPE_BASE_URL ?? "https://novosibirsk.hh.ru").replace(
-    /\/$/,
-    "",
-  );
+  const { email, password } = requireHhCredentials();
+  const baseUrl = getEnv().HH_BASE_URL;
   const loginUrl = getHhLoginUrl(baseUrl);
 
   console.log(formatHhAuthLogMessage("start", baseUrl));

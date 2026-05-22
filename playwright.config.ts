@@ -1,8 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 import "dotenv/config";
 
-const baseURL = process.env.HH_SCRAPE_BASE_URL ?? "https://novosibirsk.hh.ru";
-const statePath = process.env.HH_AUTH_STATE_PATH ?? ".auth/hh-user.json";
+import { getEnv } from "./src/config/env.js";
+import { DEFAULT_AUTH_STATE_PATH } from "./src/playwright/auth.js";
+
+const { HH_BASE_URL, HEADLESS } = getEnv();
 
 export default defineConfig({
   testDir: "./src/playwright",
@@ -13,7 +15,8 @@ export default defineConfig({
   reporter: "list",
   use: {
     ...devices["Desktop Chrome"],
-    baseURL,
+    baseURL: HH_BASE_URL,
+    headless: HEADLESS,
     locale: "ru-RU",
     timezoneId: "Asia/Novosibirsk",
     trace: "on-first-retry",
@@ -29,7 +32,7 @@ export default defineConfig({
       testMatch: /.*\.scrape\.ts/,
       dependencies: ["setup"],
       use: {
-        storageState: statePath,
+        storageState: DEFAULT_AUTH_STATE_PATH,
       },
     },
   ],

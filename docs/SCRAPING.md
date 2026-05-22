@@ -7,7 +7,7 @@
 1. `src/playwright/auth.setup.ts` — логин на **hh.ru** по `HH_EMAIL` / `HH_PASSWORD`
 2. Cookies → `.auth/hh-user.json`, метаданные → `.auth/hh-session.meta.json` (`provider: "hh.ru"`)
 3. Поиск по прямому URL (без инпута): `{baseUrl}/search/vacancy?text=...&search_field=name`  
-   Фраза: `HH_SCRAPE_KEYWORD` (или `HH_SEARCH_TEXT`), иначе `defaultScrapeKeyword` из профиля.  
+   Фраза: секция **«Поиск на hh.ru»** в `content/candidate-profile.md` (или `HH_SEARCH_KEYWORD` в `.env`).  
    Кодирование: `URLSearchParams` (пробелы → `+`, кириллица → `%D0%...`).
 4. На каждой странице — id в массив; далее клик `a[data-qa="pager-next"]`, пока ссылка есть (лимит `HH_SCRAPE_MAX_PAGES`)
 5. Список: `div[id]` с числовым id и/или ссылки `/vacancy/{id}`

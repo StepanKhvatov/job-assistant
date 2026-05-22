@@ -4,13 +4,13 @@ import fastifyEnv from "@fastify/env";
 import Fastify from "fastify";
 
 import { registerRoutes } from "./api/index.js";
-import { envSchema } from "./config/env.js";
+import { fastifyEnvSchema } from "./config/env.js";
 import { prisma } from "./db/client.js";
 
 const app = Fastify({ logger: true });
 
 await app.register(fastifyEnv, {
-  schema: envSchema,
+  schema: fastifyEnvSchema,
   dotenv: true,
 });
 

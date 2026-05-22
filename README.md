@@ -64,7 +64,7 @@ npm run dev
 
 Соискательский API закрыт. Основной путь — **скрапинг** под вашим аккаунтом.
 
-1. В `.env`: `DATABASE_URL`, `HH_EMAIL`, `HH_PASSWORD`, `HH_SCRAPE_KEYWORD` (например `Frontend разработчик`)
+1. В `.env`: `DATABASE_URL`, `HH_EMAIL`, `HH_PASSWORD`, `DEEPSEEK_API_KEY` — поисковая фраза в `content/candidate-profile.md` (секция «Поиск на hh.ru»)
 
 2. Полный цикл — **одна команда** (логин → поиск по ключевому слову → обход страниц выдачи → карточки `/vacancy/{id}` → запись в Supabase):
 

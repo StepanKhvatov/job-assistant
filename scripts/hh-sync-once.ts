@@ -1,50 +1,39 @@
 import "dotenv/config";
 
+import { getEnv } from "../src/config/env.js";
 import { HH_DEFAULT_BASE_URL } from "../src/integrations/hh/constants.js";
 import { resolveSearchTextFromEnv, syncVacanciesFromHh } from "../src/services/vacancy-sync.js";
 import { prisma } from "../src/db/client.js";
 
+const env = getEnv();
+
 const searchText = resolveSearchTextFromEnv({
-  HH_SEARCH_TEXT: process.env.HH_SEARCH_TEXT,
-  HH_KEYWORDS: process.env.HH_KEYWORDS,
+  HH_SEARCH_TEXT: env.HH_SEARCH_TEXT,
+  HH_KEYWORDS: env.HH_KEYWORDS ?? env.HH_SEARCH_KEYWORD,
 });
 
-const userAgent = process.env.HH_USER_AGENT?.trim();
+const userAgent = env.HH_USER_AGENT;
 if (!userAgent) {
   console.error("Set HH_USER_AGENT (required by hh.ru API)");
   process.exit(1);
 }
 
-const accessToken = process.env.HH_ACCESS_TOKEN?.trim();
+const accessToken = env.HH_ACCESS_TOKEN;
 if (!accessToken) {
   console.error("Set HH_ACCESS_TOKEN from https://dev.hh.ru/admin");
   process.exit(1);
 }
 
-const maxPages = Math.min(
-  20,
-  Math.max(1, Number.parseInt(process.env.HH_MAX_PAGES_PER_QUERY ?? "5", 10) || 5),
-);
-const detailDelayMs = Math.min(
-  5000,
-  Math.max(0, Number.parseInt(process.env.HH_DETAIL_DELAY_MS ?? "350", 10) || 350),
-);
-
-const maxVacanciesDetail = Math.min(
-  2000,
-  Math.max(1, Number.parseInt(process.env.HH_MAX_VACANCIES_DETAIL ?? "200", 10) || 200),
-);
-
 const result = await syncVacanciesFromHh({
   searchText,
   userAgent,
   accessToken,
-  baseUrl: process.env.HH_BASE_URL?.trim() || HH_DEFAULT_BASE_URL,
-  maxPagesPerQuery: maxPages,
-  detailDelayMs,
-  includeOfficeNovosibirsk: process.env.HH_INCLUDE_OFFICE !== "false",
-  includeRemoteRussia: process.env.HH_INCLUDE_REMOTE !== "false",
-  maxVacanciesDetail,
+  baseUrl: env.HH_API_BASE_URL ?? HH_DEFAULT_BASE_URL,
+  maxPagesPerQuery: env.HH_MAX_PAGES_PER_QUERY ?? 5,
+  detailDelayMs: env.HH_API_DETAIL_DELAY_MS ?? 350,
+  includeOfficeNovosibirsk: env.HH_INCLUDE_OFFICE ?? true,
+  includeRemoteRussia: env.HH_INCLUDE_REMOTE ?? true,
+  maxVacanciesDetail: env.HH_MAX_VACANCIES_DETAIL ?? 200,
 });
 
 console.log(JSON.stringify({ searchText, ...result }, null, 2));
