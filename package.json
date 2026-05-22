@@ -22,6 +22,7 @@
     "db:cleanup": "tsx scripts/db-cleanup.ts",
     "hh:sync": "tsx scripts/hh-sync-once.ts",
     "playwright:auth": "playwright test --project=setup",
+    "playwright:apply": "playwright test --project=scrape apply.scrape",
     "hh:run": "npm run playwright:auth && npm run hh:scrape",
     "hh:scrape": "tsx scripts/hh-scrape-once.ts",
     "ai:rank": "tsx scripts/ai-rank-once.ts",

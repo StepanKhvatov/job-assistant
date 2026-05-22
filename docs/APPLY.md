@@ -2,13 +2,31 @@
 
 Без Telegram и без DeepSeek для письма — одно сопроводительное из `content/cover-letter.md`.
 
-## Цепочка
+## Два способа запуска отклика
+
+| Способ | Где в IDE | БД `applications` |
+| ------ | --------- | ----------------- |
+| **`npm run hh:apply`** | Скрипт `scripts/hh-apply-once.ts` | ✅ пишет |
+| **`npm run playwright:apply`** | Тест `src/playwright/apply.scrape.ts` | ❌ только UI |
+
+В Test Explorer видны только файлы `*.scrape.ts` и `auth.setup.ts`. Логика отклика общая: `src/playwright/apply.ts`.
+
+## Цепочка (продакшен)
 
 ```bash
 npm run hh:scrape    # вакансии в БД
 npm run ai:rank      # analyses.score
-npm run hh:apply     # отклик на hh.ru
+npm run hh:apply     # отклик на hh.ru → applications
 ```
+
+## Тест одной вакансии (Playwright UI)
+
+```bash
+# в .env: HH_VACANCY_ID=132469416
+npm run playwright:apply
+```
+
+По умолчанию `APPLY_DRY_RUN=true` — форма заполняется, «Отправить» не нажимается.
 
 Полный прогон (с логином):
 
