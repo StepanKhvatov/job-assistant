@@ -6,7 +6,7 @@
 
 | Файл | Назначение |
 | ---- | ---------- |
-| `content/candidate-profile.md` | Резюме, навыки, **нет высшего образования**, предпочтения |
+| `content/candidate-profile.md` | Сжатая выжимка для ранжирования (синхрон с `content/resume/master.md`) |
 | `content/rank-system.md` | Правила score и формат JSON |
 
 Редактируйте без изменения TypeScript. После правок снова `npm run ai:rank`.

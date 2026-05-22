@@ -121,9 +121,19 @@ npm run hh:sync
 | `npm run playwright:auth` | Только логин → `.auth/hh-user.json`      |
 | `npm run hh:sync`         | HeadHunter API sync (if token available) |
 
+## Resume content
+
+Мастер-резюме: [`content/resume/master.md`](content/resume/master.md). См. [docs/RESUME_SYNC.md](docs/RESUME_SYNC.md).
+
+Сжатая выжимка для AI-ранжирования: [`content/candidate-profile.md`](content/candidate-profile.md).
+
 ## Project structure
 
 ```
+content/
+  resume/        # master.md, experience.yaml
+  candidate-profile.md
+  cover-letter.md
 src/
   api/           # HTTP routes
   config/        # env schema, candidate-profile (роль/навыки без ПДн)

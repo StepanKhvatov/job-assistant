@@ -1,0 +1,180 @@
+# Синхрон с master.md. Без ПДн.
+
+headline: Middle Frontend Developer (React, TypeScript, Next.js App Router)
+summary: >
+  Middle frontend с 2020. SquareFi — кошелёк виртуальных карт на Next.js 15
+  (App Router, Server Components, Server Actions): серверная JWT-авторизация в
+  httpOnly cookies, refresh-token rotation, дедупликация refresh, Web + Telegram
+  Mini App flow, Zustand. Immigrant Invest — Nx monorepo, Next.js, Storyblok +
+  Strapi (контроллеры, миграция на Strapi 4), next-intl, SEO/Core Web Vitals на
+  тысячах страниц. DexPilot — Junior → Middle на криптоплатформе, Redux Toolkit,
+  WebSocket, Strapi для users; в 2025 — terminal app на Solana. Vitest, Jest,
+  Playwright, GitLab CI pipelines, Storybook.
+english: A2
+status: Открыт к предложениям
+
+employers:
+  - id: squarefi
+    name: SquareFi
+    url: https://squarefi.co/
+    title: Middle Frontend Developer
+    employment: full
+    start: 2025-11
+    end: 2026-02
+    note: испытательный срок
+    bullets:
+      - Кошелёк виртуальных карт (крипто) на Next.js 15 (App Router, Server Components, Server Actions).
+      - Серверная JWT-авторизация в httpOnly cookies, refresh-token rotation; Web + Telegram Mini App flow.
+      - Auth-middleware вокруг OpenAPI-клиента — дедупликация refresh при параллельных 401 (Mutex, AsyncLocalStorage, React cache).
+      - Zustand; Playwright E2E (auth-isolation, refresh-concurrency); Vitest unit.
+    skills:
+      - React
+      - TypeScript
+      - Next.js
+      - App Router
+      - Server Components
+      - Server Actions
+      - server-side authentication
+      - JWT
+      - httpOnly cookies
+      - Zustand
+      - Playwright
+      - Vitest
+      - OpenAPI
+      - Telegram Mini Apps
+
+  - id: dexpilot
+    name: DexPilot
+    title: Frontend Developer (Junior → Middle)
+    periods:
+      - employment: full
+        start: 2021-03
+        end: 2023-04
+        note: рост от Junior до Middle
+      - employment: part
+        start: 2025-06
+        end: 2025-09
+        note: возвращение на подработку — Solana terminal
+    projects:
+      - url: https://0xprocessing.com/
+        note: крипто-платежи
+    bullets:
+      - 2025 (part-time) — приложение-терминал для торговли на Solana.
+      - Криптоплатформа Zenfuse → DexPilot — терминал ордеров на Redux Toolkit, WebSocket к биржам.
+      - 0xprocessing.com — формы крипто-платежей (Redux Toolkit), JSX → HTML-письма.
+      - Strapi — хранение пользователей, ручки и контроллеры.
+      - Оптимизация 10+ страниц; код-ревью.
+    skills:
+      - React
+      - TypeScript
+      - Redux Toolkit
+      - WebSocket
+      - Solana
+      - Web3 (basic)
+      - Strapi
+      - HTML email
+      - crypto UI
+
+  - id: immigrant-invest
+    name: Immigrant Invest
+    title: Middle Frontend Developer
+    employment: full
+    start: 2023-04
+    end: 2025-06
+    team_size: 3
+    release_cadence: 2-3 в неделю
+    projects:
+      - url: https://immigrantinvest.com/ru/
+      - url: https://mygoldenvisa.io/
+      - url: https://property.passportivity.com/ru/
+        note: страницы недвижимости (1500+)
+      - url: https://imin-cyprus.com/ru/
+        note: дочерний мультитенант, запущен ради SEO
+    bullets:
+      - 3 продукта в monorepo (Nx, Next.js) + дочерний мультитенант для SEO.
+      - 3000+ страниц блога, 1500+ страниц недвижимости, мультиязычность через next-intl.
+      - SEO и Core Web Vitals (LCP/CLS), серверный рендеринг, оптимизация изображений.
+      - Storyblok — 30+ компонентов-блоков; Strapi — каталог недвижимости (контроллеры, ручки, миграция на Strapi 4, Strapi Cloud).
+      - Vitest, Jest, Playwright; деплой Vercel (1–3 мин сборка); настройка GitLab CI pipeline.
+      - Storybook для UI; Telegram Mini Apps.
+    skills:
+      - React
+      - TypeScript
+      - Next.js
+      - Nx
+      - Storyblok
+      - Strapi
+      - next-intl
+      - Storybook
+      - Telegram Mini Apps
+      - Vitest
+      - Jest
+      - Playwright
+      - GitLab CI
+      - Vercel
+      - SEO
+      - Core Web Vitals
+
+  - id: flake-design
+    name: Flake Design
+    title: Frontend-разработчик
+    employment: part
+    start: 2020-12
+    end: 2022-05
+    projects:
+      - url: https://didigallery.com/ru
+    bullets:
+      - didigallery.com — веб-приложение/галерея; API платёжных систем; Strapi для контента.
+    skills: [React, JavaScript, Strapi, payment APIs, SPA]
+
+education:
+  - name: Яндекс Практикум — React-разработчик
+    year: 2022
+  - name: Яндекс Практикум — Веб-разработчик
+    year: 2020
+
+languages:
+  - russian: native
+  - english: A2
+
+skills:
+  must_have:
+    - TypeScript
+    - JavaScript
+    - React
+    - Next.js
+    - App Router
+    - Server Components
+    - Server Actions
+    - Redux Toolkit
+    - Zustand
+    - Nx
+    - Strapi
+    - Storyblok
+    - next-intl
+    - Storybook
+    - Tailwind CSS
+    - SSR
+    - server-side authentication
+    - JWT
+    - Vitest
+    - Jest
+    - Playwright
+    - GitLab CI
+    - Vercel
+    - Telegram Mini Apps
+    - SEO
+    - Core Web Vitals
+  familiar:
+    - Node.js
+    - WebSocket
+    - Solana
+    - Web3
+    - SPA
+    - Redux (classic)
+    - Strapi Cloud
+    - OpenAPI
+
+preferences:
+  location: Новосибирск (офис) или удалёнка по России
+  exclude: Роли без связи с frontend; вакансии с обязательным высшим образованием
