@@ -44,6 +44,7 @@ Middle frontend, коммерческий опыт с конца 2020 года.
 ## Опыт работы
 
 ### SquareFi — Middle Frontend Developer
+
 *Ноябрь 2025 — Февраль 2026 · полная занятость*  
 [squarefi.co](https://squarefi.co/)
 
@@ -53,6 +54,7 @@ Middle frontend, коммерческий опыт с конца 2020 года.
 - State через **Zustand**; E2E-тесты на Playwright, unit — Vitest.
 
 ### DexPilot — Frontend Developer (Junior → Middle)
+
 *Июнь 2025 — Сентябрь 2025 · частичная занятость (возвращение)*  
 *Март 2021 — Апрель 2023 · полная занятость (рост от Junior до Middle)*
 
@@ -63,6 +65,7 @@ Middle frontend, коммерческий опыт с конца 2020 года.
 - Оптимизация 10+ страниц под производительность и масштабируемость; код-ревью.
 
 ### Immigrant Invest — Middle Frontend Developer
+
 *Апрель 2023 — Июнь 2025 · полная занятость*
 
 - Развитие 3 продуктов в monorepo (Nx, Next.js): [immigrantinvest.com](https://immigrantinvest.com/ru/), [mygoldenvisa.io](https://mygoldenvisa.io/), каталог недвижимости [property.passportivity.com](https://property.passportivity.com/ru/); запустили дочерний мультитенант [imin-cyprus.com](https://imin-cyprus.com/ru/) для усиления SEO.
@@ -73,7 +76,8 @@ Middle frontend, коммерческий опыт с конца 2020 года.
 - **GitLab CI** — настройка и сопровождение pipeline. **Storybook** для UI. **Telegram Mini Apps.**
 
 ### Flake Design — Frontend-разработчик
-*Декабрь 2020 — Май 2022 · частичная занятость*
+
+*Декабрь 2020 — Март 2021 · полная занятость*
 
 - [didigallery.com](https://didigallery.com/ru) — веб-приложение/галерея; интеграция API платёжных систем; **Strapi** для контента.
 
@@ -90,5 +94,6 @@ Middle frontend, коммерческий опыт с конца 2020 года.
 
 ## Ссылки
 
-- Портфолио: https://www.khvatov.ru
-- GitHub: https://github.com/StepanKhvatov
+- Портфолио: [https://www.khvatov.ru](https://www.khvatov.ru)
+- GitHub: [https://github.com/StepanKhvatov](https://github.com/StepanKhvatov)
+
