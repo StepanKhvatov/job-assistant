@@ -1,4 +1,5 @@
 import { getEnv } from "../config/env.js";
+import { HH_AREA_RUSSIA } from "../integrations/hh/constants.js";
 import { resolveAuthPaths } from "./auth.js";
 
 export const DEFAULT_SCRAPE_BASE_URL = "https://novosibirsk.hh.ru";
@@ -33,6 +34,7 @@ export function buildSearchUrl(baseUrl: string, keyword: string): string {
   params.set("text", keyword.trim());
   params.set("search_field", "name");
   params.set("items_on_page", "50");
+  params.set("area", String(HH_AREA_RUSSIA));
   return `${baseUrl}/search/vacancy?${params.toString()}`;
 }
 

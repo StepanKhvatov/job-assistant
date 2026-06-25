@@ -1,14 +1,16 @@
 import { defineConfig, devices } from "@playwright/test";
+import { existsSync } from "node:fs";
 import "dotenv/config";
 
 import { getEnv } from "./src/config/env.js";
 import { DEFAULT_AUTH_STATE_PATH } from "./src/playwright/auth.js";
 
 const { HH_BASE_URL, HEADLESS } = getEnv();
+const hasAuthState = existsSync(DEFAULT_AUTH_STATE_PATH);
 
 export default defineConfig({
   testDir: "./src/playwright",
-  timeout: 120_000,
+  timeout: 180_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,
   retries: 0,
@@ -30,7 +32,8 @@ export default defineConfig({
     {
       name: "scrape",
       testMatch: /.*\.scrape\.ts/,
-      dependencies: ["setup"],
+      // Логин только вручную (playwright:auth). Тесты читают .auth/hh-user.json.
+      ...(hasAuthState ? {} : { dependencies: ["setup"] as const }),
       use: {
         storageState: DEFAULT_AUTH_STATE_PATH,
       },

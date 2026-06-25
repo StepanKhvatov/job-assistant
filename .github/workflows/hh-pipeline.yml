@@ -9,16 +9,19 @@ on:
 jobs:
   hh-pipeline:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
 
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       DIRECT_URL: ${{ secrets.DIRECT_URL }}
-      HH_EMAIL: ${{ secrets.HH_EMAIL }}
-      HH_PASSWORD: ${{ secrets.HH_PASSWORD }}
+      HH_AUTH_STATE_B64: ${{ secrets.HH_AUTH_STATE_B64 }}
+      HH_AUTH_META_B64: ${{ secrets.HH_AUTH_META_B64 }}
       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
       APPLY_DRY_RUN: ${{ secrets.APPLY_DRY_RUN || 'true' }}
+      RANK_LIMIT: "10"
+      APPLY_MAX_PER_RUN: "10"
       HEADLESS: "true"
+      CI: "true"
 
     steps:
       - name: Checkout repository
@@ -36,5 +39,17 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run HH pipeline
-        run: npm run hh:run && npm run ai:rank && npm run hh:apply
+      - name: Restore HH session
+        run: npm run hh:auth:restore
+
+      - name: Verify HH session
+        run: npm run hh:auth:check
+
+      - name: Scrape vacancies
+        run: npm run hh:scrape
+
+      - name: Rank vacancies (DeepSeek)
+        run: npm run ai:rank
+
+      - name: Apply to vacancies
+        run: npm run hh:apply

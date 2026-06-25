@@ -15,7 +15,7 @@
 
 ```env
 DEEPSEEK_API_KEY=sk-...
-# AI_RANK_LIMIT=20
+# AI_RANK_LIMIT=10
 # AI_RANK_DELAY_MS=500
 ```
 

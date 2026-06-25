@@ -23,11 +23,15 @@
     "hh:sync": "tsx scripts/hh-sync-once.ts",
     "playwright:auth": "playwright test --project=setup",
     "playwright:apply": "playwright test --project=scrape apply.scrape",
-    "hh:run": "npm run playwright:auth && npm run hh:scrape",
+    "hh:auth:restore": "tsx scripts/restore-hh-auth.ts",
+    "hh:auth:export": "tsx scripts/export-hh-auth.ts",
+    "hh:auth:check": "tsx scripts/restore-hh-auth.ts && tsx scripts/check-hh-auth.ts",
+    "hh:apply:test": "tsx scripts/test-apply-one.ts",
+    "hh:run": "npm run hh:auth:restore && npm run hh:scrape",
     "hh:scrape": "tsx scripts/hh-scrape-once.ts",
     "ai:rank": "tsx scripts/ai-rank-once.ts",
     "hh:apply": "tsx scripts/hh-apply-once.ts",
-    "hh:pipeline": "npm run hh:scrape && npm run ai:rank && npm run hh:apply"
+    "hh:pipeline": "npm run hh:auth:restore && npm run hh:scrape && npm run ai:rank && npm run hh:apply"
   },
   "repository": {
     "type": "git",

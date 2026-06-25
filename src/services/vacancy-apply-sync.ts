@@ -4,11 +4,12 @@ import { resolveApplyEnv, type ApplyEnv } from "../config/apply-env.js";
 import { loadCoverLetter } from "../config/load-content.js";
 import { resolveRankEnv } from "../config/rank-env.js";
 import { writeCoverLetterWithDeepSeek } from "../integrations/deepseek/client.js";
+import { assertHhSessionOnPage } from "../playwright/auth-session.js";
 import { assertValidHhAuth, HH_AUTH_PROVIDER } from "../playwright/auth.js";
 import { resolveScrapeEnv } from "../playwright/config.js";
 import {
   applyToVacancy,
-  APPLICATION_FINAL_STATUSES,
+  APPLICATION_NO_RETRY_STATUSES,
   APPLICATION_STATUS,
 } from "../playwright/apply.js";
 import { buildCoverLetterMessages } from "../prompts/cover-letter.js";
@@ -29,6 +30,7 @@ export type ApplySyncResult = {
   dryRunCount: number;
   skippedAlready: number;
   skippedNoButton: number;
+  skippedForeignCountry: number;
   failed: number;
   retention: RetentionCleanupResult;
   errors: string[];
@@ -119,7 +121,7 @@ export async function applyToRankedVacancies(
   const vacancies = await prisma.vacancy.findMany({
     where: {
       applications: {
-        none: { status: { in: [...APPLICATION_FINAL_STATUSES] } },
+        none: { status: { in: [...APPLICATION_NO_RETRY_STATUSES] } },
       },
       analyses: { some: { score: { gte: applyEnv.minScore } } },
     },
@@ -141,6 +143,7 @@ export async function applyToRankedVacancies(
   let dryRunCount = 0;
   let skippedAlready = 0;
   let skippedNoButton = 0;
+  let skippedForeignCountry = 0;
   let failed = 0;
 
   const browser = await chromium.launch({ headless: applyEnv.headless });
@@ -152,6 +155,9 @@ export async function applyToRankedVacancies(
       timezoneId: "Asia/Novosibirsk",
     });
     const page = await context.newPage();
+
+    await assertHhSessionOnPage(page, scrapeEnv.baseUrl);
+    logInfo(`[${HH_AUTH_PROVIDER}] session alive base=${scrapeEnv.baseUrl}`);
 
     for (let i = 0; i < toApply.length; i++) {
       const vacancy = toApply[i];
@@ -193,6 +199,10 @@ export async function applyToRankedVacancies(
             skippedNoButton++;
             logInfo(`apply skip hh_id=${vacancy.hhId} (no button)`);
             break;
+          case APPLICATION_STATUS.skippedForeignCountry:
+            skippedForeignCountry++;
+            logInfo(`apply skip hh_id=${vacancy.hhId} (foreign country)`);
+            break;
           default:
             failed++;
             console.error(
@@ -223,7 +233,7 @@ export async function applyToRankedVacancies(
   const retention = await cleanupStaleVacancies();
 
   logInfo(
-    `apply finished applied=${applied} dry_run=${dryRunCount} failed=${failed} already=${skippedAlready} no_button=${skippedNoButton}`,
+    `apply finished applied=${applied} dry_run=${dryRunCount} failed=${failed} already=${skippedAlready} no_button=${skippedNoButton} foreign_country=${skippedForeignCountry}`,
   );
 
   return {
@@ -234,6 +244,7 @@ export async function applyToRankedVacancies(
     dryRunCount,
     skippedAlready,
     skippedNoButton,
+    skippedForeignCountry,
     failed,
     retention,
     errors,

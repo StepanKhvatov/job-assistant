@@ -66,13 +66,27 @@ npm run dev
 
 1. В `.env`: `DATABASE_URL`, `HH_EMAIL`, `HH_PASSWORD`, `DEEPSEEK_API_KEY` — поисковая фраза в `content/candidate-profile.md` (секция «Поиск на hh.ru»)
 
-2. Полный цикл — **одна команда** (логин → поиск по ключевому слову → обход страниц выдачи → карточки `/vacancy/{id}` → запись в Supabase):
+2. Полный цикл без повторного логина (сессия в `.auth/`):
 
 ```bash
 npm run hh:run
 ```
 
-Если сессия в `.auth/` уже сохранена и не истекла, можно без повторного логина:
+Первый раз или после истечения сессии — логин вручную (капча в headed-режиме):
+
+```bash
+HH_SCRAPE_HEADLESS=false npm run playwright:auth
+```
+
+Экспорт сессии для GitHub Actions:
+
+```bash
+npm run hh:auth:export
+```
+
+Сохраните вывод в secrets `HH_AUTH_STATE_B64` и `HH_AUTH_META_B64`.
+
+Только scrape (без restore из secret):
 
 ```bash
 npm run hh:scrape
@@ -98,17 +112,20 @@ npm run ai:rank
 Ежедневный workflow: `.github/workflows/hh-pipeline.yml`
 
 - расписание: **10:00 МСК** (`07:00 UTC`)
-- шаги: `npm run hh:run && npm run ai:rank && npm run hh:apply`
+- шаги: `npm run hh:pipeline` (restore сессии → scrape → rank → apply)
 - ручной запуск: `workflow_dispatch`
+- логин в CI **не выполняется** — только восстановление cookies из secret
 
 Нужные GitHub Secrets:
 
 - `DATABASE_URL`
 - `DIRECT_URL`
-- `HH_EMAIL`
-- `HH_PASSWORD`
+- `HH_AUTH_STATE_B64` — base64 `.auth/hh-user.json` (`npm run hh:auth:export`)
+- `HH_AUTH_META_B64` — base64 `.auth/hh-session.meta.json` (опционально)
 - `DEEPSEEK_API_KEY`
 - `APPLY_DRY_RUN` (`true` для безопасного dry-run, `false` для реальной отправки)
+
+`HH_EMAIL` / `HH_PASSWORD` в CI не нужны — только для локального `playwright:auth`.
 
 ### Альтернатива: API (токен приложения)
 
@@ -129,13 +146,14 @@ npm run hh:sync
 | `npm run lint`            | ESLint                                   |
 | `npm run db:migrate`      | Apply migrations                         |
 | `npm run db:studio`       | Prisma Studio                            |
-| `npm run hh:run`          | Auth + search + vacancy pages → DB       |
-| `npm run hh:scrape`       | То же без повторного логина (нужна сессия) |
+| `npm run hh:run`          | Restore session + search + vacancy pages → DB |
+| `npm run hh:scrape`       | Scrape без логина (нужна сессия в `.auth/`)   |
 | `npm run ai:rank`         | DeepSeek → score в `analyses`              |
 | `npm run db:cleanup`      | Удаление вакансий старше N дней (retention) |
 | `npm run hh:apply`        | Отклик по score (см. APPLY_DRY_RUN)         |
-| `npm run hh:pipeline`     | scrape → rank → apply                       |
-| `npm run playwright:auth` | Только логин → `.auth/hh-user.json`      |
+| `npm run hh:pipeline`     | restore → scrape → rank → apply             |
+| `npm run playwright:auth` | Логин → `.auth/hh-user.json` (локально)     |
+| `npm run hh:auth:export`  | Base64 сессии для GitHub Secrets            |
 | `npm run hh:sync`         | HeadHunter API sync (if token available) |
 
 ## Resume content

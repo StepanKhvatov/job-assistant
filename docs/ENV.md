@@ -29,6 +29,15 @@ APPLY_DRY_RUN=true
 | `AI_RANK_LIMIT` | `RANK_LIMIT` |
 | `VACANCY_RETENTION_DAYS` | `RETENTION_DAYS` |
 
+## CI (GitHub Actions)
+
+| Переменная | Обязательно | Описание |
+| ---------- | ----------- | -------- |
+| `HH_AUTH_STATE_B64` | да (в CI) | Base64 `.auth/hh-user.json` — `npm run hh:auth:export` |
+| `HH_AUTH_META_B64` | нет | Base64 `.auth/hh-session.meta.json` |
+
+Локально `HH_AUTH_STATE_B64` не нужен — используется `.auth/` после `playwright:auth`.
+
 ## Отдельно от pipeline
 
 Добавьте в `.env` только если используете:
@@ -51,7 +60,7 @@ APPLY_DRY_RUN=true
 | ---- | -------- |
 | `HH_BASE_URL` | `https://novosibirsk.hh.ru` |
 | `SCRAPE_DELAY_MS` | 800 |
-| `RANK_LIMIT` | 20 |
+| `RANK_LIMIT` | 10 |
 | `APPLY_MIN_SCORE` | 75 |
-| `APPLY_MAX_PER_RUN` | 5 |
+| `APPLY_MAX_PER_RUN` | 10 |
 | `RETENTION_DAYS` | 45 |

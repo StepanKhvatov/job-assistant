@@ -10,13 +10,20 @@ export const APPLICATION_STATUS = {
   dryRun: "dry_run",
   alreadyApplied: "already_applied",
   noButton: "no_response_button",
+  skippedForeignCountry: "skipped_foreign_country",
   failed: "failed",
 } as const;
 
-/** Финальные статусы — повторный отклик не делаем. */
+/** Успешный отклик — повторный не делаем. */
 export const APPLICATION_FINAL_STATUSES = [
   APPLICATION_STATUS.applied,
   APPLICATION_STATUS.alreadyApplied,
+] as const;
+
+/** Любой статус, после которого вакансию больше не берём в очередь отклика. */
+export const APPLICATION_NO_RETRY_STATUSES = [
+  ...APPLICATION_FINAL_STATUSES,
+  APPLICATION_STATUS.skippedForeignCountry,
 ] as const;
 
 export type ApplicationStatus = (typeof APPLICATION_STATUS)[keyof typeof APPLICATION_STATUS];
@@ -50,6 +57,7 @@ const SUBMIT_BTN_FALLBACK = '[data-qa="vacancy-response-submit"]';
 
 const SUCCESS_TEXT = /отклик отправлен|резюме доставлено/i;
 const TEST_PAGE_TEXT = /тестовое задание|пройдите тест|ответьте на вопросы|анкета/i;
+const FOREIGN_COUNTRY_TEXT = /откликаетесь на вакансию в другой стране/i;
 
 function logApply(hhId: string, step: string, detail?: string): void {
   logInfo(detail ? `apply hh_id=${hhId} step=${step} ${detail}` : `apply hh_id=${hhId} step=${step}`);
@@ -65,8 +73,8 @@ async function dismissBlockingOverlays(page: Page, hhId: string): Promise<void> 
     const button = page.getByRole("button", { name: label }).first();
     if (await button.isVisible().catch(() => false)) {
       logApply(hhId, "dismiss_overlay", `button="${label}"`);
-      await button.click().catch(() => {});
-      await page.waitForTimeout(300);
+      await button.click({ timeout: 3_000 }).catch(() => {});
+      await page.waitForTimeout(200);
     }
   }
 }
@@ -128,7 +136,40 @@ async function resolveApplyRoot(page: Page, hhId: string): Promise<Locator> {
 type ApplySurfaceState =
   | { kind: "form" }
   | { kind: "instant_applied" }
-  | { kind: "test_page" };
+  | { kind: "test_page" }
+  | { kind: "foreign_country" };
+
+async function isForeignCountryPopupVisible(page: Page): Promise<boolean> {
+  const dialog = page.getByRole("alertdialog").filter({ hasText: FOREIGN_COUNTRY_TEXT });
+  if (await dialog.first().isVisible().catch(() => false)) {
+    return true;
+  }
+  return page.getByText(FOREIGN_COUNTRY_TEXT).first().isVisible().catch(() => false);
+}
+
+async function dismissForeignCountryPopup(page: Page, hhId: string): Promise<void> {
+  try {
+    const dialog = page.getByRole("alertdialog").filter({ hasText: FOREIGN_COUNTRY_TEXT }).first();
+    const cancel = dialog
+      .getByRole("button", { name: /отменить/i })
+      .or(page.getByRole("button", { name: /отменить/i }))
+      .first();
+
+    if (await cancel.isVisible().catch(() => false)) {
+      logApply(hhId, "foreign_country", "dismiss=Отменить");
+      await cancel.click({ timeout: 5_000 }).catch(() => {});
+    } else {
+      logApply(hhId, "foreign_country", "dismiss=escape");
+      await page.keyboard.press("Escape").catch(() => {});
+    }
+
+    await dialog.waitFor({ state: "hidden", timeout: 5_000 }).catch(() => {});
+    await page.waitForTimeout(300).catch(() => {});
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    logApply(hhId, "foreign_country", `dismiss=error ${msg}`);
+  }
+}
 
 async function waitForApplySurface(page: Page, initialUrl: string, hhId: string): Promise<ApplySurfaceState> {
   const deadline = Date.now() + 45_000;
@@ -142,13 +183,18 @@ async function waitForApplySurface(page: Page, initialUrl: string, hhId: string)
       return { kind: "instant_applied" };
     }
 
-    const root = await resolveApplyRoot(page, hhId);
+    if (await isForeignCountryPopupVisible(page)) {
+      await dismissForeignCountryPopup(page, hhId);
+      logApply(hhId, "surface", "kind=foreign_country");
+      return { kind: "foreign_country" };
+    }
+
     const hasForm = await page.locator(RESPONSE_FORM).first().isVisible().catch(() => false);
-    const hasLetter = await root.locator(LETTER_FIELD).first().isVisible().catch(() => false);
-    const hasResume = await root.locator(RESUME_TRIGGER).first().isVisible().catch(() => false);
-    const hasSubmitPopup = await root.locator(SUBMIT_BTN_POPUP).first().isVisible().catch(() => false);
-    const hasSubmitFallback = await root.locator(SUBMIT_BTN_FALLBACK).first().isVisible().catch(() => false);
-    const hasAddLetter = await root.locator(ADD_COVER_LETTER).first().isVisible().catch(() => false);
+    const hasLetter = await page.locator(LETTER_FIELD).first().isVisible().catch(() => false);
+    const hasResume = await page.locator(RESUME_TRIGGER).first().isVisible().catch(() => false);
+    const hasSubmitPopup = await page.locator(SUBMIT_BTN_POPUP).first().isVisible().catch(() => false);
+    const hasSubmitFallback = await page.locator(SUBMIT_BTN_FALLBACK).first().isVisible().catch(() => false);
+    const hasAddLetter = await page.locator(ADD_COVER_LETTER).first().isVisible().catch(() => false);
 
     if (hasForm || hasLetter || hasResume || hasSubmitPopup || hasSubmitFallback || hasAddLetter) {
       logApply(
@@ -189,6 +235,32 @@ async function openApplySurface(page: Page, hhId: string): Promise<ApplySurfaceS
   return waitForApplySurface(page, initialUrl, hhId);
 }
 
+async function closeResumeDropdown(page: Page, hhId: string): Promise<void> {
+  const optionList = page.locator(RESUME_OPTIONS_LIST).first();
+  const dropBase = page.locator('[data-qa="drop-base"]').first();
+  const dropdownOpen =
+    (await optionList.isVisible().catch(() => false)) ||
+    (await dropBase.isVisible().catch(() => false));
+
+  if (!dropdownOpen) {
+    return;
+  }
+
+  const header = page.locator('[data-qa="modal-header"], [data-qa="title-container"]').first();
+  if (await header.isVisible().catch(() => false)) {
+    logApply(hhId, "resume", "dropdown_close=modal_header_click");
+    await header.click({ timeout: 5_000 }).catch(() => {});
+  } else {
+    logApply(hhId, "resume", "dropdown_close=resume_trigger_toggle");
+    await page.locator(RESUME_TRIGGER).first().click({ timeout: 5_000 }).catch(() => {});
+  }
+
+  await optionList.waitFor({ state: "hidden", timeout: 10_000 }).catch(() => {});
+  await dropBase.waitFor({ state: "hidden", timeout: 5_000 }).catch(() => {});
+  await page.waitForTimeout(300);
+  logApply(hhId, "resume", "dropdown_closed");
+}
+
 async function selectResumeByKeyword(
   page: Page,
   root: Locator,
@@ -202,7 +274,13 @@ async function selectResumeByKeyword(
     return;
   }
 
-  logApply(hhId, "resume_open", `keyword="${keyword}"`);
+  const currentTitle = normalizeText((await resumeTrigger.textContent()) ?? "");
+  if (currentTitle.includes(normalizedKeyword)) {
+    logApply(hhId, "resume", `already_selected title="${currentTitle}"`);
+    return;
+  }
+
+  logApply(hhId, "resume_open", `keyword="${keyword}" current="${currentTitle}"`);
   await resumeTrigger.click();
 
   const optionList = page.locator(RESUME_OPTIONS_LIST).first();
@@ -225,13 +303,13 @@ async function selectResumeByKeyword(
 
     if (titleText.includes(normalizedKeyword)) {
       await option.click();
-      await optionList.waitFor({ state: "hidden", timeout: 15_000 }).catch(() => {});
+      await closeResumeDropdown(page, hhId);
       logApply(hhId, "resume_selected", `title="${titleText}"`);
       return;
     }
   }
 
-  await page.keyboard.press("Escape").catch(() => {});
+  await closeResumeDropdown(page, hhId);
   logApply(hhId, "resume", `not_found keyword="${keyword}"`);
 }
 
@@ -255,23 +333,88 @@ async function fillReactTextarea(locator: Locator, value: string, hhId: string):
   }
 }
 
-async function ensureCoverLetterField(root: Locator, hhId: string) {
-  const wrapper = root.locator(TEXTAREA_WRAPPER).first();
-  if ((await wrapper.count()) === 0 || !(await wrapper.isVisible().catch(() => false))) {
-    const addButton = root.locator(ADD_COVER_LETTER).first();
-    if ((await addButton.count()) === 0) {
-      throw new Error("Cover letter textarea and add-cover-letter button not found");
-    }
-    logApply(hhId, "cover_letter_add", 'click=data-qa="add-cover-letter"');
-    await addButton.click();
-    await wrapper.waitFor({ state: "visible", timeout: 15_000 });
-  } else {
-    logApply(hhId, "cover_letter", 'textarea_wrapper=visible');
+async function resolveApplyModal(page: Page, hhId: string): Promise<Locator> {
+  const modal = page
+    .locator(
+      '[data-qa="vacancy-response-popup"], [data-qa="modal-overlay"], [role="dialog"]',
+    )
+    .filter({ has: page.locator(`${SUBMIT_BTN_POPUP}, ${SUBMIT_BTN_FALLBACK}`) })
+    .first();
+
+  if (await modal.isVisible().catch(() => false)) {
+    logApply(hhId, "resolve_modal", "scope=response_popup");
+    return modal;
   }
 
-  const letter = root.locator(LETTER_FIELD).first();
+  const scroll = page.locator('[data-qa="modal-content-scroll-container"]').first();
+  if (await scroll.isVisible().catch(() => false)) {
+    logApply(hhId, "resolve_modal", "scope=modal-content-scroll-container");
+    return scroll;
+  }
+
+  return resolveApplyRoot(page, hhId);
+}
+
+async function logCoverLetterProbe(page: Page, scope: Locator, hhId: string): Promise<void> {
+  const pageAdd = await page.locator(ADD_COVER_LETTER).count();
+  const scopeAdd = await scope.locator(ADD_COVER_LETTER).count();
+  const pageLetter = await page.locator(LETTER_FIELD).count();
+  const scopeLetter = await scope.locator(LETTER_FIELD).count();
+  const pageWrapper = await page.locator(TEXTAREA_WRAPPER).count();
+  logApply(
+    hhId,
+    "cover_letter_probe",
+    `page add=${pageAdd} letter=${pageLetter} wrapper=${pageWrapper} scope add=${scopeAdd} letter=${scopeLetter}`,
+  );
+}
+
+async function ensureCoverLetterField(page: Page, scope: Locator, hhId: string) {
+  await page.locator(SUBMIT_BTN_POPUP).first().waitFor({ state: "visible", timeout: 15_000 });
+  await closeResumeDropdown(page, hhId);
+  await logCoverLetterProbe(page, scope, hhId);
+
+  const scopes = [scope, page.locator('[data-qa="modal-content-scroll-container"]').first(), page];
+
+  for (const container of scopes) {
+    const letter = container.locator(LETTER_FIELD).first();
+    if ((await letter.count()) > 0 && (await letter.isVisible().catch(() => false))) {
+      logApply(hhId, "cover_letter", "field=visible");
+      return letter;
+    }
+
+    const wrapper = container.locator(TEXTAREA_WRAPPER).first();
+    if ((await wrapper.count()) > 0 && (await wrapper.isVisible().catch(() => false))) {
+      logApply(hhId, "cover_letter", "textarea_wrapper=visible");
+      const visibleLetter = container.locator(LETTER_FIELD).first();
+      await visibleLetter.waitFor({ state: "visible", timeout: 15_000 });
+      return visibleLetter;
+    }
+  }
+
+  const addButton = page.locator(ADD_COVER_LETTER).first();
+  if ((await addButton.count()) === 0 || !(await addButton.isVisible().catch(() => false))) {
+    const textLink = page.getByText(/^добавить сопроводительное$/i).first();
+    if ((await textLink.count()) > 0 && (await textLink.isVisible().catch(() => false))) {
+      logApply(hhId, "cover_letter_add", "click=text_link");
+      await textLink.click({ timeout: 10_000 });
+    } else {
+      throw new Error("Cover letter textarea and add-cover-letter button not found");
+    }
+  } else {
+    logApply(hhId, "cover_letter_add", "click=add-cover-letter");
+    await addButton.click({ timeout: 10_000 });
+  }
+
+  const letter = page.locator(LETTER_FIELD).first();
   await letter.waitFor({ state: "visible", timeout: 15_000 });
-  logApply(hhId, "cover_letter", 'field=data-qa="vacancy-response-popup-form-letter-input"');
+  logApply(hhId, "cover_letter", "field=visible");
+
+  const textareaFallback = page.locator("textarea").first();
+  if (!(await letter.isVisible().catch(() => false)) && (await textareaFallback.isVisible().catch(() => false))) {
+    logApply(hhId, "cover_letter", "field=textarea_fallback");
+    return textareaFallback;
+  }
+
   return letter;
 }
 
@@ -331,6 +474,11 @@ export async function applyToVacancy(
     if (msg.includes("Response button not found")) {
       return { status: APPLICATION_STATUS.noButton };
     }
+    if (await isForeignCountryPopupVisible(page).catch(() => false)) {
+      await dismissForeignCountryPopup(page, hhId);
+      logApply(hhId, "done", "status=skipped_foreign_country after=error");
+      return { status: APPLICATION_STATUS.skippedForeignCountry };
+    }
     return { status: APPLICATION_STATUS.failed, error: msg };
   }
 
@@ -344,11 +492,16 @@ export async function applyToVacancy(
     return { status: APPLICATION_STATUS.failed, error: "vacancy requires test/questionnaire" };
   }
 
-  const root = await resolveApplyRoot(page, hhId);
+  if (surface.kind === "foreign_country") {
+    logApply(hhId, "done", "status=skipped_foreign_country");
+    return { status: APPLICATION_STATUS.skippedForeignCountry };
+  }
 
-  await selectResumeByKeyword(page, root, CANDIDATE_PROFILE.targetRole, hhId);
+  const modal = await resolveApplyModal(page, hhId);
 
-  const letter = await ensureCoverLetterField(root, hhId);
+  await selectResumeByKeyword(page, modal, CANDIDATE_PROFILE.targetRole, hhId);
+
+  const letter = await ensureCoverLetterField(page, modal, hhId);
   await fillReactTextarea(letter, coverLetter, hhId);
 
   if (dryRun) {
@@ -358,7 +511,7 @@ export async function applyToVacancy(
   }
 
   try {
-    await clickSubmitButton(root, page, hhId);
+    await clickSubmitButton(modal, page, hhId);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     logApply(hhId, "error", msg);
@@ -366,6 +519,12 @@ export async function applyToVacancy(
   }
 
   await page.waitForTimeout(1500);
+
+  if (await isForeignCountryPopupVisible(page)) {
+    await dismissForeignCountryPopup(page, hhId);
+    logApply(hhId, "done", "status=skipped_foreign_country after=submit");
+    return { status: APPLICATION_STATUS.skippedForeignCountry };
+  }
 
   if (await page.getByText(SUCCESS_TEXT).first().isVisible().catch(() => false)) {
     logApply(hhId, "done", "status=applied confirmed=success_text");

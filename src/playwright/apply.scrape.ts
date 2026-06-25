@@ -1,11 +1,12 @@
-import { test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import { getEnv } from "../config/env.js";
 import { resolveApplyEnv } from "../config/apply-env.js";
 import { loadCoverLetter } from "../config/load-content.js";
+import { assertHhSessionOnPage } from "./auth-session.js";
 import { assertValidHhAuth, HH_AUTH_PROVIDER } from "./auth.js";
 import { resolveScrapeEnv } from "./config.js";
-import { applyToVacancy } from "./apply.js";
+import { applyToVacancy, APPLICATION_STATUS } from "./apply.js";
 
 /**
  * Playwright Test: один отклик на вакансию (по умолчанию dry-run).
@@ -16,6 +17,7 @@ test("apply to vacancy (dry-run by default)", async ({ page }) => {
   const scrapeEnv = resolveScrapeEnv();
   const applyEnv = resolveApplyEnv();
   assertValidHhAuth(scrapeEnv.authStatePath, scrapeEnv.authMetaPath, scrapeEnv.baseUrl);
+  await assertHhSessionOnPage(page, scrapeEnv.baseUrl);
 
   const hhId = getEnv().HH_VACANCY_ID;
   if (!hhId) {
@@ -38,6 +40,14 @@ test("apply to vacancy (dry-run by default)", async ({ page }) => {
   );
 
   console.log(JSON.stringify(result, null, 2));
+
+  expect([
+    APPLICATION_STATUS.applied,
+    APPLICATION_STATUS.dryRun,
+    APPLICATION_STATUS.alreadyApplied,
+    APPLICATION_STATUS.skippedForeignCountry,
+    APPLICATION_STATUS.noButton,
+  ]).toContain(result.status);
 
   test.info().attach("apply-result.json", {
     body: JSON.stringify(result, null, 2),
