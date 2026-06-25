@@ -13,6 +13,7 @@
     "lint": "eslint src",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:migrate": "node scripts/run-with-direct-url.mjs migrate dev",
     "db:migrate:deploy": "node scripts/run-with-direct-url.mjs migrate deploy",
