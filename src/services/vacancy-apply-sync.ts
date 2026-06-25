@@ -2,6 +2,8 @@ import { chromium } from "playwright";
 
 import { resolveApplyEnv, type ApplyEnv } from "../config/apply-env.js";
 import { loadCoverLetter } from "../config/load-content.js";
+import { resolveRankEnv } from "../config/rank-env.js";
+import { writeCoverLetterWithDeepSeek } from "../integrations/deepseek/client.js";
 import { assertValidHhAuth, HH_AUTH_PROVIDER } from "../playwright/auth.js";
 import { resolveScrapeEnv } from "../playwright/config.js";
 import {
@@ -9,6 +11,7 @@ import {
   APPLICATION_FINAL_STATUSES,
   APPLICATION_STATUS,
 } from "../playwright/apply.js";
+import { buildCoverLetterMessages } from "../prompts/cover-letter.js";
 import type { RetentionCleanupResult } from "./vacancy-retention.js";
 import { cleanupStaleVacancies } from "./vacancy-retention.js";
 import { prisma } from "../db/client.js";
@@ -48,14 +51,66 @@ async function saveApplication(
   });
 }
 
+function truncate(text: string, max: number): string {
+  if (text.length <= max) {
+    return text;
+  }
+  return `${text.slice(0, max)}…`;
+}
+
+async function buildApplyCoverLetter(
+  vacancy: {
+    hhId: string;
+    title: string;
+    company: string | null;
+    salary: string | null;
+    url: string;
+    description: string | null;
+    analyses: Array<{ summary: string | null }>;
+  },
+  fallbackCoverLetter: string,
+): Promise<string> {
+  const description = vacancy.description?.trim();
+  if (!description) {
+    return fallbackCoverLetter;
+  }
+
+  try {
+    const rankEnv = resolveRankEnv();
+    const generated = await writeCoverLetterWithDeepSeek(
+      rankEnv,
+      buildCoverLetterMessages({
+        hhId: vacancy.hhId,
+        title: vacancy.title,
+        company: vacancy.company,
+        salary: vacancy.salary,
+        url: vacancy.url,
+        description: truncate(description, rankEnv.descriptionMaxChars),
+        analysisSummary: vacancy.analyses[0]?.summary,
+      }),
+    );
+
+    if (!generated) {
+      return fallbackCoverLetter;
+    }
+
+    logInfo(`apply cover_letter generated hh_id=${vacancy.hhId}`);
+    return generated;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    logInfo(`apply cover_letter fallback hh_id=${vacancy.hhId} reason="${msg}"`);
+    return fallbackCoverLetter;
+  }
+}
+
 export async function applyToRankedVacancies(
   options?: Partial<ApplyEnv>,
 ): Promise<ApplySyncResult> {
   const applyEnv = { ...resolveApplyEnv(), ...options };
   const scrapeEnv = resolveScrapeEnv();
-  const coverLetter = loadCoverLetter();
+  const fallbackCoverLetter = loadCoverLetter();
 
-  if (!coverLetter) {
+  if (!fallbackCoverLetter) {
     throw new Error("content/cover-letter.md is empty");
   }
 
@@ -101,9 +156,11 @@ export async function applyToRankedVacancies(
     for (let i = 0; i < toApply.length; i++) {
       const vacancy = toApply[i];
       const score = vacancy.analyses[0]?.score ?? 0;
+      let coverLetter = fallbackCoverLetter;
       logInfo(`apply ${i + 1}/${toApply.length} hh_id=${vacancy.hhId} score=${score}`);
 
       try {
+        coverLetter = await buildApplyCoverLetter(vacancy, fallbackCoverLetter);
         const result = await applyToVacancy(
           page,
           scrapeEnv.baseUrl,

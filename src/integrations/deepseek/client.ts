@@ -44,6 +44,42 @@ export async function deepSeekChatJson<T>(options: {
   return JSON.parse(content) as T;
 }
 
+export async function deepSeekChatText(options: {
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+  messages: DeepSeekChatMessage[];
+  temperature?: number;
+}): Promise<string> {
+  const res = await fetch(`${options.baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${options.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: options.model,
+      messages: options.messages,
+      temperature: options.temperature ?? 0.4,
+      stream: false,
+    }),
+  });
+
+  const body = (await res.json()) as ChatCompletionResponse;
+
+  if (!res.ok) {
+    const msg = body.error?.message ?? res.statusText;
+    throw new Error(`DeepSeek HTTP ${res.status}: ${msg}`);
+  }
+
+  const content = body.choices?.[0]?.message?.content?.trim();
+  if (!content) {
+    throw new Error("DeepSeek returned empty content");
+  }
+
+  return content;
+}
+
 export async function rankVacancyWithDeepSeek(
   env: { apiKey: string; baseUrl: string; model: string },
   messages: DeepSeekChatMessage[],
@@ -64,4 +100,16 @@ export async function rankVacancyWithDeepSeek(
     pros: Array.isArray(raw.pros) ? raw.pros.map(String) : [],
     cons: Array.isArray(raw.cons) ? raw.cons.map(String) : [],
   };
+}
+
+export async function writeCoverLetterWithDeepSeek(
+  env: { apiKey: string; baseUrl: string; model: string },
+  messages: DeepSeekChatMessage[],
+): Promise<string> {
+  const content = await deepSeekChatText({
+    ...env,
+    messages,
+  });
+
+  return content.trim();
 }

@@ -38,6 +38,7 @@ APPLY_DRY_RUN=true
 | `HH_USER_AGENT`, `HH_ACCESS_TOKEN`, `HH_KEYWORDS` | `npm run hh:sync` |
 | `HH_MAX_PAGES_PER_QUERY`, `HH_MAX_VACANCIES_DETAIL` | только `npm run hh:sync` |
 | `HH_VACANCY_ID` | `npm run playwright:apply` |
+| `APPLY_MAX_VACANCIES` | `npm run hh:apply` |
 | `CRON_SECRET`, `PORT`, `HOST` | `npm run dev` |
 
 ## Типизация
