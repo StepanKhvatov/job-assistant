@@ -51,7 +51,10 @@ const ADD_COVER_LETTER = '[data-qa="add-cover-letter"]';
 const TEXTAREA_WRAPPER = '[data-qa="textarea-wrapper"]';
 
 const LETTER_FIELD =
-  '[data-qa="vacancy-response-popup-form-letter-input"], [data-qa="vacancy-response-letter-input"], textarea[name="letter"], textarea[placeholder*="сопроводительн" i]';
+  '[data-qa="vacancy-response-popup-form-letter-input"] textarea, [data-qa="vacancy-response-letter-input"] textarea, textarea[name="letter"], textarea[placeholder*="сопроводительн" i], [data-qa="vacancy-response-popup-form-letter-input"], [data-qa="vacancy-response-letter-input"]';
+
+const WRITABLE_FIELD =
+  'textarea, input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]), [contenteditable="true"]';
 
 const COVER_LETTER_BLOCK = '[data-qa="cover-letter"], [data-qa="vacancy-response-cover-letter"]';
 
@@ -342,24 +345,104 @@ async function selectResumeByKeyword(
   logApply(hhId, "resume", `not_found keyword="${keyword}"`);
 }
 
-async function fillReactTextarea(locator: Locator, value: string, hhId: string): Promise<void> {
-  try {
-    await locator.fill(value);
-    logApply(hhId, "cover_letter_fill", `chars=${value.length} method=fill`);
-  } catch {
-    await locator.evaluate((el, text) => {
-      const textarea = el as HTMLTextAreaElement;
-      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
-      if (setter) {
-        setter.call(textarea, text);
-      } else {
-        textarea.value = text;
+async function resolveFillTarget(locator: Locator): Promise<Locator> {
+  const isWritable = await locator
+    .evaluate((el) => {
+      if (el instanceof HTMLTextAreaElement) {
+        return true;
       }
-      textarea.dispatchEvent(new Event("input", { bubbles: true }));
-      textarea.dispatchEvent(new Event("change", { bubbles: true }));
-    }, value);
-    logApply(hhId, "cover_letter_fill", `chars=${value.length} method=react_setter`);
+      if (el instanceof HTMLInputElement) {
+        return !["hidden", "checkbox", "radio", "button", "submit"].includes(el.type);
+      }
+      return el instanceof HTMLElement && el.isContentEditable;
+    })
+    .catch(() => false);
+
+  if (isWritable) {
+    return locator;
   }
+
+  const nested = locator.locator(WRITABLE_FIELD).first();
+  if ((await nested.count()) > 0) {
+    return nested;
+  }
+
+  return locator;
+}
+
+async function fillReactTextarea(locator: Locator, value: string, hhId: string): Promise<void> {
+  const target = await resolveFillTarget(locator);
+  const attempts: Array<{ name: string; run: () => Promise<void> }> = [
+    {
+      name: "fill",
+      run: async () => {
+        await target.click({ timeout: 5_000 });
+        await target.fill(value, { timeout: 10_000 });
+      },
+    },
+    {
+      name: "type",
+      run: async () => {
+        await target.click({ timeout: 5_000 });
+        await target.pressSequentially(value, { delay: 5 });
+      },
+    },
+    {
+      name: "react_setter",
+      run: async () => {
+        await target.evaluate((el, text) => {
+          if (el instanceof HTMLElement && el.isContentEditable) {
+            el.textContent = text;
+            el.dispatchEvent(new Event("input", { bubbles: true }));
+            return;
+          }
+
+          let field: HTMLTextAreaElement | HTMLInputElement | null = null;
+          if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) {
+            field = el;
+          } else {
+            const found = el.querySelector(
+              "textarea, input:not([type='hidden']):not([type='checkbox']):not([type='radio'])",
+            );
+            if (found instanceof HTMLTextAreaElement || found instanceof HTMLInputElement) {
+              field = found;
+            }
+          }
+
+          if (!field) {
+            throw new Error(`Writable field not found inside ${el.tagName}`);
+          }
+
+          const proto =
+            field instanceof HTMLTextAreaElement
+              ? HTMLTextAreaElement.prototype
+              : HTMLInputElement.prototype;
+          const setter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
+          if (setter) {
+            setter.call(field, text);
+          } else {
+            field.value = text;
+          }
+          field.dispatchEvent(new Event("input", { bubbles: true }));
+          field.dispatchEvent(new Event("change", { bubbles: true }));
+        }, value);
+      },
+    },
+  ];
+
+  let lastError: unknown;
+  for (const attempt of attempts) {
+    try {
+      await attempt.run();
+      logApply(hhId, "cover_letter_fill", `chars=${value.length} method=${attempt.name}`);
+      return;
+    } catch (e) {
+      lastError = e;
+    }
+  }
+
+  const msg = lastError instanceof Error ? lastError.message : String(lastError);
+  throw new Error(`Cover letter fill failed: ${msg}`);
 }
 
 async function resolveApplyModal(page: Page, hhId: string): Promise<Locator> {
