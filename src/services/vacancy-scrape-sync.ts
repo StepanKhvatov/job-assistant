@@ -8,16 +8,18 @@ import type { RetentionCleanupResult } from "./vacancy-retention.js";
 export type ScrapeSyncResult = {
   keyword: string;
   searchUrl: string;
+  totalReported: number | null;
+  totalPages: number;
+  pagesVisited: number;
   listCount: number;
-  detailLimit: number;
+  skippedExisting: number;
   upserted: number;
-  skippedOverLimit: number;
   retention: RetentionCleanupResult;
   errors: string[];
 };
 import { scrapeVacancyDetailById } from "../playwright/vacancy-page.js";
 import { logInfo, logScrapeFail } from "../utils/log.js";
-import { upsertScrapedVacancy } from "./upsert-vacancy.js";
+import { findExistingVacancyHhIds, upsertScrapedVacancy } from "./upsert-vacancy.js";
 import { cleanupStaleVacancies } from "./vacancy-retention.js";
 
 function sleep(ms: number) {
@@ -46,25 +48,32 @@ export async function syncVacanciesFromScrape(
     const page = await context.newPage();
 
     logInfo(`search keyword="${keyword}"`);
-    const vacancyIds = await collectVacancyIdsFromSearch(
+    const search = await collectVacancyIdsFromSearch(
       page,
       baseUrl,
       keyword,
-      env.maxSearchPages,
     );
-    logInfo(`search done ids=${vacancyIds.length} url=${searchUrl}`);
+    const vacancyIds = search.ids;
+    logInfo(
+      `search done ids=${vacancyIds.length} pages=${search.pagesVisited}/${search.totalPages} total_reported=${search.totalReported ?? "?"}`,
+    );
 
-    const toProcess = vacancyIds.slice(0, env.maxVacanciesDetail);
-    const skippedOverLimit = Math.max(0, vacancyIds.length - toProcess.length);
-    if (skippedOverLimit > 0) {
-      logInfo(`limit skip=${skippedOverLimit} (HH_SCRAPE_MAX_VACANCIES=${env.maxVacanciesDetail})`);
-    }
+    const toProcess = vacancyIds;
 
+    const existingHhIds = await findExistingVacancyHhIds(toProcess);
+    let skippedExisting = 0;
     let upserted = 0;
     const total = toProcess.length;
 
     for (let i = 0; i < total; i++) {
       const hhId = toProcess[i];
+
+      if (existingHhIds.has(hhId)) {
+        skippedExisting++;
+        logInfo(`vacancy ${i + 1}/${total} hh_id=${hhId} skip (already in db)`);
+        continue;
+      }
+
       logInfo(`vacancy ${i + 1}/${total} hh_id=${hhId}`);
 
       try {
@@ -86,7 +95,7 @@ export async function syncVacanciesFromScrape(
     await context.close();
 
     logInfo(
-      `finished upserted=${upserted} failed=${errors.length} ids_found=${vacancyIds.length}`,
+      `finished upserted=${upserted} skipped_existing=${skippedExisting} failed=${errors.length} ids_found=${vacancyIds.length}`,
     );
 
     const retention = await cleanupStaleVacancies();
@@ -94,10 +103,12 @@ export async function syncVacanciesFromScrape(
     return {
       keyword,
       searchUrl,
+      totalReported: search.totalReported,
+      totalPages: search.totalPages,
+      pagesVisited: search.pagesVisited,
       listCount: vacancyIds.length,
-      detailLimit: env.maxVacanciesDetail,
+      skippedExisting,
       upserted,
-      skippedOverLimit,
       retention,
       errors,
     };

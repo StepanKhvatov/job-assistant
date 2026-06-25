@@ -30,9 +30,6 @@ const envSchema = z.object({
   HH_BASE_URL: z.string().url(),
 
   HEADLESS: z.boolean(),
-
-  MAX_SEARCH_PAGES: z.number().int(),
-  MAX_VACANCIES: z.number().int(),
   SCRAPE_DELAY_MS: z.number().int(),
 
   DEEPSEEK_API_KEY: z.string().optional(),
@@ -94,8 +91,6 @@ function parseRawEnv(raw: NodeJS.ProcessEnv = process.env): AppEnv {
 
     HEADLESS: falseUnless(raw.HEADLESS ?? raw.HH_SCRAPE_HEADLESS, true),
 
-    MAX_SEARCH_PAGES: intInRange(raw.MAX_SEARCH_PAGES ?? raw.HH_SCRAPE_MAX_PAGES, 3, 1, 10),
-    MAX_VACANCIES: intInRange(raw.MAX_VACANCIES ?? raw.HH_SCRAPE_MAX_VACANCIES, 50, 1, 500),
     SCRAPE_DELAY_MS: intInRange(
       raw.SCRAPE_DELAY_MS ?? raw.HH_SCRAPE_DETAIL_DELAY_MS,
       800,

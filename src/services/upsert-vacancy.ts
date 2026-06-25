@@ -2,6 +2,19 @@ import { prisma } from "../db/client.js";
 import type { ScrapedVacancyDetail } from "../playwright/types.js";
 import { logDbFail, logDbOk } from "../utils/log.js";
 
+export async function findExistingVacancyHhIds(hhIds: string[]): Promise<Set<string>> {
+  if (hhIds.length === 0) {
+    return new Set();
+  }
+
+  const rows = await prisma.vacancy.findMany({
+    where: { hhId: { in: hhIds } },
+    select: { hhId: true },
+  });
+
+  return new Set(rows.map((row) => row.hhId));
+}
+
 export async function upsertScrapedVacancy(detail: ScrapedVacancyDetail): Promise<boolean> {
   try {
     await prisma.vacancy.upsert({

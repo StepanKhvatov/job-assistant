@@ -6,13 +6,14 @@
 
 1. `src/playwright/auth.setup.ts` — логин на **hh.ru** по `HH_EMAIL` / `HH_PASSWORD`
 2. Cookies → `.auth/hh-user.json`, метаданные → `.auth/hh-session.meta.json` (`provider: "hh.ru"`)
-3. Поиск по прямому URL (без инпута): `{baseUrl}/search/vacancy?text=...&search_field=name`  
+3. Поиск по прямому URL (без инпута): `{baseUrl}/search/vacancy?text=...&search_field=name&items_on_page=50`  
    Фраза: секция **«Поиск на hh.ru»** в `content/candidate-profile.md` (или `HH_SEARCH_KEYWORD` в `.env`).  
    Кодирование: `URLSearchParams` (пробелы → `+`, кириллица → `%D0%...`).
-4. На каждой странице — id в массив; далее клик `a[data-qa="pager-next"]`, пока ссылка есть (лимит `HH_SCRAPE_MAX_PAGES`)
-5. Список: `div[id]` с числовым id и/или ссылки `/vacancy/{id}`
-6. Карточка: `{baseUrl}/vacancy/{id}` → парсинг title, company, salary, description
-7. `upsert` в таблицу `vacancies` по `hh_id`
+4. Из `[data-qa="title"]` читается строка вида **«Найдено N вакансий»** → число страниц = `ceil(N / 50)`.
+5. На каждой странице — id карточек `[data-qa="vacancy-serp__vacancy"]`; переход делается прямым `goto` на тот же search URL с `page=0..N-1`.
+6. Дедуп id в памяти; в БД — `hh_id` unique + upsert; уже сохранённые id **не парсятся повторно** (skip).
+7. Карточка: `{baseUrl}/vacancy/{id}` → парсинг title, company, salary, description
+8. `upsert` в таблицу `vacancies` по `hh_id`
 
 ## Команды
 
@@ -39,15 +40,14 @@ npm run hh:scrape
 
 | Сообщение | Значение |
 | --------- | -------- |
+| `search title="Найдено N вакансий"` | Содержимое заголовка поиска из `[data-qa="title"]` |
+| `search total reported=N total_pages=M` | Всего вакансий по выдаче и сколько страниц нужно обойти |
+| `search page N/M: +K ids` | Собрано новых id с страницы (без дублей) |
 | `db ok hh_id=… title="…"` | Запись в Supabase успешна |
 | `db fail hh_id=… error=…` | Ошибка Prisma / БД |
 | `scrape fail hh_id=…` | Не открылась или не распарсилась карточка |
-| `search page N: +M ids` | Собрано id с страницы выдачи |
-| `finished upserted=… failed=…` | Итог прогона |
-
-## TODO
-
-- **Неполный сбор id** со всех страниц выдачи: доработать пагинацию `pager-next` (ожидание, дедуп, лимиты). См. комментарий в `collectVacancyIdsFromSearch`.
+| `skip (already in db)` | Вакансия уже есть в `vacancies` — карточку не открываем |
+| `finished upserted=… skipped_existing=…` | Итог прогона |
 
 ## Карточка вакансии
 

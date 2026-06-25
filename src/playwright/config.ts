@@ -9,8 +9,6 @@ export type ScrapeEnv = {
   authStatePath: string;
   authMetaPath: string;
   searchKeyword: string;
-  maxSearchPages: number;
-  maxVacanciesDetail: number;
   detailDelayMs: number;
   headless: boolean;
 };
@@ -24,8 +22,6 @@ export function resolveScrapeEnv(overrides?: Partial<ScrapeEnv>): ScrapeEnv {
     authStatePath: statePath,
     authMetaPath: metaPath,
     searchKeyword: e.HH_SEARCH_KEYWORD,
-    maxSearchPages: e.MAX_SEARCH_PAGES,
-    maxVacanciesDetail: e.MAX_VACANCIES,
     detailDelayMs: e.SCRAPE_DELAY_MS,
     headless: e.HEADLESS,
     ...overrides,
@@ -36,6 +32,7 @@ export function buildSearchUrl(baseUrl: string, keyword: string): string {
   const params = new URLSearchParams();
   params.set("text", keyword.trim());
   params.set("search_field", "name");
+  params.set("items_on_page", "50");
   return `${baseUrl}/search/vacancy?${params.toString()}`;
 }
 

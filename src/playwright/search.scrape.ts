@@ -11,12 +11,23 @@ test("collect vacancy ids by keyword", async ({ page }) => {
   const keyword = env.searchKeyword;
   console.log(`[job-assistant][${HH_AUTH_PROVIDER}] searchUrl=${buildSearchUrl(env.baseUrl, keyword)}`);
 
-  const vacancyIds = await collectVacancyIdsFromSearch(
+  const result = await collectVacancyIdsFromSearch(
     page,
     env.baseUrl,
     keyword,
-    env.maxSearchPages,
   );
 
-  console.log(JSON.stringify(vacancyIds, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        totalReported: result.totalReported,
+        totalPages: result.totalPages,
+        pagesVisited: result.pagesVisited,
+        count: result.ids.length,
+        ids: result.ids,
+      },
+      null,
+      2,
+    ),
+  );
 });

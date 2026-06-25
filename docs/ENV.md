@@ -16,7 +16,7 @@ APPLY_DRY_RUN=true
 Поисковая фраза — секция **«Поиск на hh.ru»** в `content/candidate-profile.md` (не в `.env`).
 Опционально переопределить: `HH_SEARCH_KEYWORD=...`
 
-Остальное — дефолты в `getEnv()` (лимиты страниц, score, retention, `HH_BASE_URL=https://novosibirsk.hh.ru`).
+Остальное — дефолты в `getEnv()` (score, retention, `HH_BASE_URL=https://novosibirsk.hh.ru`).
 
 ## Алиасы (старые имена)
 
@@ -24,8 +24,6 @@ APPLY_DRY_RUN=true
 | ---- | ------------ |
 | `HH_SCRAPE_KEYWORD` | `HH_SEARCH_KEYWORD` |
 | `HH_SCRAPE_BASE_URL` | `HH_BASE_URL` |
-| `HH_SCRAPE_MAX_PAGES` | `MAX_SEARCH_PAGES` |
-| `HH_SCRAPE_MAX_VACANCIES` | `MAX_VACANCIES` |
 | `HH_SCRAPE_DETAIL_DELAY_MS` | `SCRAPE_DELAY_MS` |
 | `HH_SCRAPE_HEADLESS` | `HEADLESS` |
 | `AI_RANK_LIMIT` | `RANK_LIMIT` |
@@ -38,6 +36,7 @@ APPLY_DRY_RUN=true
 | Переменные | Команда |
 | ---------- | ------- |
 | `HH_USER_AGENT`, `HH_ACCESS_TOKEN`, `HH_KEYWORDS` | `npm run hh:sync` |
+| `HH_MAX_PAGES_PER_QUERY`, `HH_MAX_VACANCIES_DETAIL` | только `npm run hh:sync` |
 | `HH_VACANCY_ID` | `npm run playwright:apply` |
 | `CRON_SECRET`, `PORT`, `HOST` | `npm run dev` |
 
@@ -50,8 +49,6 @@ APPLY_DRY_RUN=true
 | Поле | Значение |
 | ---- | -------- |
 | `HH_BASE_URL` | `https://novosibirsk.hh.ru` |
-| `MAX_SEARCH_PAGES` | 3 |
-| `MAX_VACANCIES` | 50 |
 | `SCRAPE_DELAY_MS` | 800 |
 | `RANK_LIMIT` | 20 |
 | `APPLY_MIN_SCORE` | 75 |
