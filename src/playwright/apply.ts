@@ -428,7 +428,7 @@ async function findCoverLetterField(page: Page, hhId: string): Promise<Locator |
     page.locator(COVER_LETTER_BLOCK).first(),
     page.locator(RESPONSE_FORM).first(),
     page.locator('[data-qa="modal-content-scroll-container"]').first(),
-    page,
+    page.locator("body"),
   ];
 
   for (const root of roots) {
