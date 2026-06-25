@@ -36,7 +36,7 @@ APPLY_DRY_RUN=true
 | `HH_AUTH_STATE_B64` | да (в CI) | Slim export: только cookies `*.hh.ru` (~11 KB), не весь storageState — `npm run hh:auth:export` |
 | `HH_AUTH_META_B64` | нет | Base64 `.auth/hh-session.meta.json` |
 
-GitHub Secrets — лимит **64 KB** на значение. Полный `hh-user.json` с localStorage (~650 KB) не влезает; экспорт обрезает лишнее.
+`DATABASE_URL` — полный URI из Supabase (Transaction pooler, :6543, `?pgbouncer=true`). Хост должен быть вида `….pooler.supabase.com`, не placeholder `base`. Пароль с `@` — URL-encode (`%40`). Проверка: `npm run db:check`.
 
 Локально `HH_AUTH_STATE_B64` не нужен — используется `.auth/` после `playwright:auth`.
 
@@ -62,7 +62,7 @@ GitHub Secrets — лимит **64 KB** на значение. Полный `hh-
 | ---- | -------- |
 | `HH_BASE_URL` | `https://novosibirsk.hh.ru` |
 | `SCRAPE_DELAY_MS` | 800 |
-| `RANK_LIMIT` | 10 |
+| `RANK_LIMIT` | 100 |
 | `APPLY_MIN_SCORE` | 75 |
-| `APPLY_MAX_PER_RUN` | 10 |
+| `APPLY_MAX_PER_RUN` | 30 |
 | `RETENTION_DAYS` | 45 |

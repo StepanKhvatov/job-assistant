@@ -18,8 +18,8 @@ jobs:
       HH_AUTH_META_B64: ${{ secrets.HH_AUTH_META_B64 }}
       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
       APPLY_DRY_RUN: ${{ secrets.APPLY_DRY_RUN || 'true' }}
-      RANK_LIMIT: "10"
-      APPLY_MAX_PER_RUN: "10"
+      RANK_LIMIT: "100"
+      APPLY_MAX_PER_RUN: "30"
       HEADLESS: "true"
       CI: "true"
 
@@ -38,6 +38,9 @@ jobs:
 
       - name: Generate Prisma client
         run: npm run db:generate
+
+      - name: Verify database connection
+        run: npm run db:check
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium

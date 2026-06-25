@@ -77,4 +77,11 @@ npm run db:cleanup
 - **Runtime** (`DATABASE_URL`): transaction pooler, port **6543**, `?pgbouncer=true`
 - **Миграции** (`DIRECT_URL`): session pooler, port **5432**
 
-См. `.env.example` и README.
+Пример (подставьте свои значения из Supabase → **Connect**):
+
+```text
+postgresql://postgres.PROJECT_REF:YOUR_PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres?pgbouncer=true
+```
+
+**GitHub Secrets:** вставляйте полную строку, не только пароль. Если в пароле есть `@`, `#`, `:` — закодируйте (`@` → `%40`).  
+Проверка: `npm run db:check`.

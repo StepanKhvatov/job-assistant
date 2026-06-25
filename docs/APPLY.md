@@ -39,8 +39,8 @@ npm run hh:scrape && npm run ai:rank && npm run hh:apply
 
 ```env
 APPLY_MIN_SCORE=75
-APPLY_MAX_PER_RUN=10
-APPLY_MAX_VACANCIES=10
+APPLY_MAX_PER_RUN=30
+APPLY_MAX_VACANCIES=30
 APPLY_DELAY_MS=3000
 APPLY_DRY_RUN=true   # false — реальная отправка отклика
 ```
