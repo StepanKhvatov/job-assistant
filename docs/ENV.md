@@ -33,8 +33,10 @@ APPLY_DRY_RUN=true
 
 | Переменная | Обязательно | Описание |
 | ---------- | ----------- | -------- |
-| `HH_AUTH_STATE_B64` | да (в CI) | Base64 `.auth/hh-user.json` — `npm run hh:auth:export` |
+| `HH_AUTH_STATE_B64` | да (в CI) | Slim export: только cookies `*.hh.ru` (~11 KB), не весь storageState — `npm run hh:auth:export` |
 | `HH_AUTH_META_B64` | нет | Base64 `.auth/hh-session.meta.json` |
+
+GitHub Secrets — лимит **64 KB** на значение. Полный `hh-user.json` с localStorage (~650 KB) не влезает; экспорт обрезает лишнее.
 
 Локально `HH_AUTH_STATE_B64` не нужен — используется `.auth/` после `playwright:auth`.
 

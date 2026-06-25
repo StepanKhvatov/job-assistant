@@ -10,6 +10,10 @@ import {
   resolveAuthPaths,
   writeHhAuthMeta,
 } from "../src/playwright/auth.js";
+import {
+  decodeHhAuthStateFromSecret,
+  parseHhAuthStateJson,
+} from "../src/playwright/auth-state.js";
 import { logInfo } from "../src/utils/log.js";
 
 const stateB64 = process.env.HH_AUTH_STATE_B64?.trim();
@@ -28,19 +32,19 @@ const { statePath, metaPath } = resolveAuthPaths();
 mkdirSync(dirname(statePath), { recursive: true });
 
 let stateJson: string;
+let cookieCount: number;
 try {
-  stateJson = Buffer.from(stateB64, "base64").toString("utf8");
-  const parsed = JSON.parse(stateJson) as { cookies?: unknown };
-  if (!Array.isArray(parsed.cookies)) {
-    throw new Error("decoded JSON has no cookies array");
-  }
+  stateJson = decodeHhAuthStateFromSecret(stateB64);
+  const parsed = parseHhAuthStateJson(stateJson);
+  cookieCount = parsed.cookies.length;
+  stateJson = `${JSON.stringify(parsed)}\n`;
 } catch (e) {
   const msg = e instanceof Error ? e.message : String(e);
   throw new Error(`HH_AUTH_STATE_B64 is invalid: ${msg}`);
 }
 
 writeFileSync(statePath, stateJson);
-logInfo(`restored ${statePath} from HH_AUTH_STATE_B64 cookies=${JSON.parse(stateJson).cookies.length}`);
+logInfo(`restored ${statePath} from HH_AUTH_STATE_B64 cookies=${cookieCount}`);
 
 const metaB64 = process.env.HH_AUTH_META_B64?.trim();
 if (metaB64) {

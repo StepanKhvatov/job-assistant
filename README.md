@@ -84,7 +84,7 @@ HH_SCRAPE_HEADLESS=false npm run playwright:auth
 npm run hh:auth:export
 ```
 
-Сохраните вывод в secrets `HH_AUTH_STATE_B64` и `HH_AUTH_META_B64`.
+Сохраните вывод в secrets `HH_AUTH_STATE_B64` и `HH_AUTH_META_B64` (экспорт slim — только cookies hh.ru, ~11 KB; полный файл ~650 KB в secret не влезает).
 
 Только scrape (без restore из secret):
 
@@ -120,7 +120,7 @@ npm run ai:rank
 
 - `DATABASE_URL`
 - `DIRECT_URL`
-- `HH_AUTH_STATE_B64` — base64 `.auth/hh-user.json` (`npm run hh:auth:export`)
+- `HH_AUTH_STATE_B64` — slim base64 cookies hh.ru (`npm run hh:auth:export`, лимит GitHub 64 KB)
 - `HH_AUTH_META_B64` — base64 `.auth/hh-session.meta.json` (опционально)
 - `DEEPSEEK_API_KEY`
 - `APPLY_DRY_RUN` (`true` для безопасного dry-run, `false` для реальной отправки)
