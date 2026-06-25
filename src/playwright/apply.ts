@@ -11,6 +11,7 @@ export const APPLICATION_STATUS = {
   alreadyApplied: "already_applied",
   noButton: "no_response_button",
   skippedForeignCountry: "skipped_foreign_country",
+  skippedQuestionnaire: "skipped_questionnaire",
   failed: "failed",
 } as const;
 
@@ -24,6 +25,7 @@ export const APPLICATION_FINAL_STATUSES = [
 export const APPLICATION_NO_RETRY_STATUSES = [
   ...APPLICATION_FINAL_STATUSES,
   APPLICATION_STATUS.skippedForeignCountry,
+  APPLICATION_STATUS.skippedQuestionnaire,
 ] as const;
 
 export type ApplicationStatus = (typeof APPLICATION_STATUS)[keyof typeof APPLICATION_STATUS];
@@ -49,11 +51,38 @@ const ADD_COVER_LETTER = '[data-qa="add-cover-letter"]';
 const TEXTAREA_WRAPPER = '[data-qa="textarea-wrapper"]';
 
 const LETTER_FIELD =
-  '[data-qa="vacancy-response-popup-form-letter-input"], [data-qa="vacancy-response-letter-input"]';
+  '[data-qa="vacancy-response-popup-form-letter-input"], [data-qa="vacancy-response-letter-input"], textarea[name="letter"], textarea[placeholder*="сопроводительн" i]';
+
+const COVER_LETTER_BLOCK = '[data-qa="cover-letter"], [data-qa="vacancy-response-cover-letter"]';
 
 /** Основная кнопка отправки в модалке отклика. */
 const SUBMIT_BTN_POPUP = '[data-qa="vacancy-response-submit-popup"]';
 const SUBMIT_BTN_FALLBACK = '[data-qa="vacancy-response-submit"]';
+
+async function isQuestionnaireResponsePage(page: Page): Promise<boolean> {
+  const url = page.url();
+  if (url.includes("vacancy_response") && url.includes("startedWithQuestion=true")) {
+    return true;
+  }
+
+  if (!url.includes("vacancy_response")) {
+    return false;
+  }
+
+  const hasQuestions = await page
+    .locator(
+      '[data-qa*="employer-question"], [data-qa*="vacancy-question"], [data-qa="task-question"]',
+    )
+    .first()
+    .isVisible()
+    .catch(() => false);
+
+  if (hasQuestions) {
+    return true;
+  }
+
+  return page.getByText(TEST_PAGE_TEXT).first().isVisible().catch(() => false);
+}
 
 const SUCCESS_TEXT = /отклик отправлен|резюме доставлено/i;
 const TEST_PAGE_TEXT = /тестовое задание|пройдите тест|ответьте на вопросы|анкета/i;
@@ -368,27 +397,89 @@ async function logCoverLetterProbe(page: Page, scope: Locator, hhId: string): Pr
   );
 }
 
-async function ensureCoverLetterField(page: Page, scope: Locator, hhId: string) {
-  await page.locator(SUBMIT_BTN_POPUP).first().waitFor({ state: "visible", timeout: 15_000 });
-  await closeResumeDropdown(page, hhId);
-  await logCoverLetterProbe(page, scope, hhId);
+async function resolveTextareaInWrapper(wrapper: Locator, hhId: string): Promise<Locator | null> {
+  const letterInWrapper = wrapper.locator(LETTER_FIELD).first();
+  if ((await letterInWrapper.count()) > 0) {
+    await letterInWrapper.scrollIntoViewIfNeeded().catch(() => {});
+    if (await letterInWrapper.isVisible().catch(() => false)) {
+      logApply(hhId, "cover_letter", "field=letter_in_wrapper");
+      return letterInWrapper;
+    }
+  }
 
-  const scopes = [scope, page.locator('[data-qa="modal-content-scroll-container"]').first(), page];
+  const textarea = wrapper.locator("textarea").first();
+  if ((await textarea.count()) === 0) {
+    return null;
+  }
 
-  for (const container of scopes) {
-    const letter = container.locator(LETTER_FIELD).first();
+  const name = (await textarea.getAttribute("name")) ?? "";
+  const placeholder = (await textarea.getAttribute("placeholder")) ?? "";
+  if (name === "letter" || /сопроводительн/i.test(placeholder)) {
+    await textarea.scrollIntoViewIfNeeded().catch(() => {});
+    logApply(hhId, "cover_letter", `field=wrapper_textarea name=${name || "—"}`);
+    return textarea;
+  }
+
+  return null;
+}
+
+async function findCoverLetterField(page: Page, hhId: string): Promise<Locator | null> {
+  const roots = [
+    page.locator(COVER_LETTER_BLOCK).first(),
+    page.locator(RESPONSE_FORM).first(),
+    page.locator('[data-qa="modal-content-scroll-container"]').first(),
+    page,
+  ];
+
+  for (const root of roots) {
+    if ((await root.count()) === 0) {
+      continue;
+    }
+
+    const letter = root.locator(LETTER_FIELD).first();
     if ((await letter.count()) > 0 && (await letter.isVisible().catch(() => false))) {
       logApply(hhId, "cover_letter", "field=visible");
       return letter;
     }
 
-    const wrapper = container.locator(TEXTAREA_WRAPPER).first();
-    if ((await wrapper.count()) > 0 && (await wrapper.isVisible().catch(() => false))) {
-      logApply(hhId, "cover_letter", "textarea_wrapper=visible");
-      const visibleLetter = container.locator(LETTER_FIELD).first();
-      await visibleLetter.waitFor({ state: "visible", timeout: 15_000 });
-      return visibleLetter;
+    const wrappers = root.locator(TEXTAREA_WRAPPER);
+    const wrapperCount = await wrappers.count();
+    for (let i = 0; i < wrapperCount; i++) {
+      const wrapper = wrappers.nth(i);
+      if (!(await wrapper.isVisible().catch(() => false))) {
+        continue;
+      }
+
+      const resolved = await resolveTextareaInWrapper(wrapper, hhId);
+      if (resolved) {
+        return resolved;
+      }
     }
+
+    const blockLetter = root.locator(`${COVER_LETTER_BLOCK} textarea`).first();
+    if ((await blockLetter.count()) > 0 && (await blockLetter.isVisible().catch(() => false))) {
+      logApply(hhId, "cover_letter", "field=cover_letter_block");
+      return blockLetter;
+    }
+  }
+
+  const byLabel = page.getByRole("textbox", { name: /сопроводительн/i }).first();
+  if ((await byLabel.count()) > 0 && (await byLabel.isVisible().catch(() => false))) {
+    logApply(hhId, "cover_letter", "field=label_textbox");
+    return byLabel;
+  }
+
+  return null;
+}
+
+async function ensureCoverLetterField(page: Page, scope: Locator, hhId: string): Promise<Locator> {
+  await page.locator(SUBMIT_BTN_POPUP).first().waitFor({ state: "visible", timeout: 15_000 });
+  await closeResumeDropdown(page, hhId);
+  await logCoverLetterProbe(page, scope, hhId);
+
+  const existing = await findCoverLetterField(page, hhId);
+  if (existing) {
+    return existing;
   }
 
   const addButton = page.locator(ADD_COVER_LETTER).first();
@@ -397,6 +488,8 @@ async function ensureCoverLetterField(page: Page, scope: Locator, hhId: string) 
     if ((await textLink.count()) > 0 && (await textLink.isVisible().catch(() => false))) {
       logApply(hhId, "cover_letter_add", "click=text_link");
       await textLink.click({ timeout: 10_000 });
+    } else if (await isQuestionnaireResponsePage(page)) {
+      throw new Error("QUESTIONNAIRE_NO_COVER_LETTER");
     } else {
       throw new Error("Cover letter textarea and add-cover-letter button not found");
     }
@@ -405,17 +498,23 @@ async function ensureCoverLetterField(page: Page, scope: Locator, hhId: string) 
     await addButton.click({ timeout: 10_000 });
   }
 
-  const letter = page.locator(LETTER_FIELD).first();
-  await letter.waitFor({ state: "visible", timeout: 15_000 });
-  logApply(hhId, "cover_letter", "field=visible");
+  const afterAdd = await findCoverLetterField(page, hhId);
+  if (afterAdd) {
+    logApply(hhId, "cover_letter", "field=visible_after_add");
+    return afterAdd;
+  }
 
-  const textareaFallback = page.locator("textarea").first();
-  if (!(await letter.isVisible().catch(() => false)) && (await textareaFallback.isVisible().catch(() => false))) {
+  const textareaFallback = page.locator(`${RESPONSE_FORM} textarea[name="letter"]`).first();
+  if (await textareaFallback.isVisible().catch(() => false)) {
     logApply(hhId, "cover_letter", "field=textarea_fallback");
     return textareaFallback;
   }
 
-  return letter;
+  if (await isQuestionnaireResponsePage(page)) {
+    throw new Error("QUESTIONNAIRE_NO_COVER_LETTER");
+  }
+
+  throw new Error("Cover letter textarea not found after add-cover-letter click");
 }
 
 async function clickSubmitButton(root: Locator, page: Page, hhId: string): Promise<void> {
@@ -488,8 +587,8 @@ export async function applyToVacancy(
   }
 
   if (surface.kind === "test_page") {
-    logApply(hhId, "done", "status=failed reason=test_questionnaire");
-    return { status: APPLICATION_STATUS.failed, error: "vacancy requires test/questionnaire" };
+    logApply(hhId, "done", "status=skipped_questionnaire reason=test_page");
+    return { status: APPLICATION_STATUS.skippedQuestionnaire };
   }
 
   if (surface.kind === "foreign_country") {
@@ -501,7 +600,19 @@ export async function applyToVacancy(
 
   await selectResumeByKeyword(page, modal, CANDIDATE_PROFILE.targetRole, hhId);
 
-  const letter = await ensureCoverLetterField(page, modal, hhId);
+  let letter: Locator;
+  try {
+    letter = await ensureCoverLetterField(page, modal, hhId);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("QUESTIONNAIRE_NO_COVER_LETTER") || (await isQuestionnaireResponsePage(page))) {
+      logApply(hhId, "done", "status=skipped_questionnaire reason=no_cover_letter_field");
+      return { status: APPLICATION_STATUS.skippedQuestionnaire };
+    }
+    logApply(hhId, "error", msg);
+    return { status: APPLICATION_STATUS.failed, error: msg };
+  }
+
   await fillReactTextarea(letter, coverLetter, hhId);
 
   if (dryRun) {

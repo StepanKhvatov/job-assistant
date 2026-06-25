@@ -31,6 +31,7 @@ export type ApplySyncResult = {
   skippedAlready: number;
   skippedNoButton: number;
   skippedForeignCountry: number;
+  skippedQuestionnaire: number;
   failed: number;
   retention: RetentionCleanupResult;
   errors: string[];
@@ -144,6 +145,7 @@ export async function applyToRankedVacancies(
   let skippedAlready = 0;
   let skippedNoButton = 0;
   let skippedForeignCountry = 0;
+  let skippedQuestionnaire = 0;
   let failed = 0;
 
   const browser = await chromium.launch({ headless: applyEnv.headless });
@@ -203,6 +205,10 @@ export async function applyToRankedVacancies(
             skippedForeignCountry++;
             logInfo(`apply skip hh_id=${vacancy.hhId} (foreign country)`);
             break;
+          case APPLICATION_STATUS.skippedQuestionnaire:
+            skippedQuestionnaire++;
+            logInfo(`apply skip hh_id=${vacancy.hhId} (questionnaire)`);
+            break;
           default:
             failed++;
             console.error(
@@ -233,7 +239,7 @@ export async function applyToRankedVacancies(
   const retention = await cleanupStaleVacancies();
 
   logInfo(
-    `apply finished applied=${applied} dry_run=${dryRunCount} failed=${failed} already=${skippedAlready} no_button=${skippedNoButton} foreign_country=${skippedForeignCountry}`,
+    `apply finished applied=${applied} dry_run=${dryRunCount} failed=${failed} already=${skippedAlready} no_button=${skippedNoButton} foreign_country=${skippedForeignCountry} questionnaire=${skippedQuestionnaire}`,
   );
 
   return {
@@ -245,6 +251,7 @@ export async function applyToRankedVacancies(
     skippedAlready,
     skippedNoButton,
     skippedForeignCountry,
+    skippedQuestionnaire,
     failed,
     retention,
     errors,
