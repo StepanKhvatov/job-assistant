@@ -1,0 +1,40 @@
+name: HH Pipeline
+
+on:
+  schedule:
+    # 10:00 Moscow time = 07:00 UTC
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+
+jobs:
+  hh-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      HH_EMAIL: ${{ secrets.HH_EMAIL }}
+      HH_PASSWORD: ${{ secrets.HH_PASSWORD }}
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      APPLY_DRY_RUN: ${{ secrets.APPLY_DRY_RUN || 'true' }}
+      HEADLESS: "true"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run HH pipeline
+        run: npm run hh:run && npm run ai:rank && npm run hh:apply

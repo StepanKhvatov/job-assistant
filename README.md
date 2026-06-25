@@ -93,6 +93,23 @@ npm run ai:rank
 
 Подробнее: [docs/AI_RANK.md](docs/AI_RANK.md), автоотклик: [docs/APPLY.md](docs/APPLY.md), БД: [docs/DATABASE.md](docs/DATABASE.md)
 
+### GitHub Actions cron
+
+Ежедневный workflow: `.github/workflows/hh-pipeline.yml`
+
+- расписание: **10:00 МСК** (`07:00 UTC`)
+- шаги: `npm run hh:run && npm run ai:rank && npm run hh:apply`
+- ручной запуск: `workflow_dispatch`
+
+Нужные GitHub Secrets:
+
+- `DATABASE_URL`
+- `DIRECT_URL`
+- `HH_EMAIL`
+- `HH_PASSWORD`
+- `DEEPSEEK_API_KEY`
+- `APPLY_DRY_RUN` (`true` для безопасного dry-run, `false` для реальной отправки)
+
 ### Альтернатива: API (токен приложения)
 
 Если dev.hh.ru выдал токен приложения:
@@ -159,4 +176,4 @@ scripts/
 - [x] Stage 2 — Playwright ingestion → `vacancies`
 - [x] Stage 3 — DeepSeek ranking → `analyses`
 - [x] Stage 5 — Playwright auto-apply → `applications`
-- [ ] Stage 6 — GitHub Actions cron (`hh:pipeline`)
+- [x] Stage 6 — GitHub Actions cron (`hh:pipeline`)
