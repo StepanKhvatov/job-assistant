@@ -111,7 +111,7 @@ npm run ai:rank
 
 Ежедневный workflow: `.github/workflows/hh-pipeline.yml`
 
-- расписание: **10:00 МСК** (`07:00 UTC`)
+- расписание: **~10:17 МСК** (`17 7 * * *` UTC) — минута сдвинута с `:00`, иначе GitHub часто откладывает или пропускает cron
 - шаги: `npm run hh:pipeline` (restore сессии → scrape → rank → apply)
 - ручной запуск: `workflow_dispatch`
 - логин в CI **не выполняется** — только восстановление cookies из secret
