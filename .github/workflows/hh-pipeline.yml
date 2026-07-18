@@ -1,10 +1,10 @@
 name: HH Pipeline
 
-on:
-  schedule:
-    # 10:17 MSK (UTC+3). Avoid minute :00 — GitHub often delays/drops scheduled runs at the top of the hour.
-    - cron: "17 7 * * *"
-  workflow_dispatch:
+# on:
+#   schedule:
+#     # 10:17 MSK (UTC+3). Avoid minute :00 — GitHub often delays/drops scheduled runs at the top of the hour.
+#     - cron: "17 7 * * *"
+#   workflow_dispatch:
 
 jobs:
   hh-pipeline:
