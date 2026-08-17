@@ -65,7 +65,7 @@ export async function rankUnanalyzedVacancies(
     take: env.limit,
   });
 
-  logInfo(`ai rank start candidates=${vacancies.length} model=${env.model}`);
+  logInfo(`ai rank op=query candidates=${vacancies.length} model=${env.model} limit=${env.limit}`);
 
   for (let i = 0; i < vacancies.length; i++) {
     const vacancy = vacancies[i];

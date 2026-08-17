@@ -20,11 +20,12 @@ LinkedIn в рантайме ещё нет; когда появится, схе�
 
 Обновляйте, если любое из этого верно:
 
-1. `npm run hh:auth:check` пишет `session not alive` (редирект на `/account/login` или капча).
+1. `npm run hh:auth:check` пишет `session not alive` (на главной есть `<a role="button" data-qa="login">`, редирект на `/account/login`, капча или форма логина).
 2. Прогон `hh:scrape` / `hh:apply` падает с той же ошибкой.
-3. Проверка предупреждает, что cookies истекают в ближайшие дни.
-4. Меняли `HH_BASE_URL` (сессия с `novosibirsk.hh.ru` не подходит для `hh.ru`).
-5. На сайте hh.ru разлогинились во всех браузерах.
+3. В логе apply: `session=guest` / `login_required` — cookies открывают вакансию, но отклик требует полноценного логина. Кнопка «Откликнуться» на карточке **не** значит, что вход выполнен: она есть и у гостя.
+4. Проверка предупреждает, что cookies истекают в ближайшие дни.
+5. Меняли `HH_BASE_URL` (сессия с `novosibirsk.hh.ru` не подходит для `hh.ru`).
+6. На сайте hh.ru разлогинились во всех браузерах.
 
 Не ждите «месяц». Если pipeline снова включите в GitHub Actions — закладывайте обновление secret раз в 1–2 недели.
 
@@ -38,11 +39,12 @@ npm run hh:auth:check
 
 1. Если задан `HH_AUTH_STATE_B64` — восстановит `.auth/` из него.
 2. Иначе возьмёт уже лежащий `.auth/hh-user.json`.
-3. Откроет Chromium с этими cookies и сходит на `/applicant/vacancies`.
-4. Покажет срок жизни cookies (поле `expires` в storageState).
+3. Откроет Chromium с этими cookies, зайдёт на главную `{HH_BASE_URL}/` и ищет `<a role="button" data-qa="login">`. Если тег есть — вход не выполнен.
+4. Затем сходит на `/applicant/vacancies` (не login, не captcha).
+5. Покажет срок жизни cookies (поле `expires` в storageState).
 
-Ок: в логе `auth check ok` и `session alive`.  
-Плохо: `redirected to login` или `captcha required` — перелогиньтесь.
+Ок: в логе `operation=hh:auth:check done`, `alive=yes` и `login_link=no`.  
+Плохо: `login_link` / `redirected to login` / `header still shows Войти` / `captcha required` — перелогиньтесь.
 
 ## Локально: обновить cookies
 

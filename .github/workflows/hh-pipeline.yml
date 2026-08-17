@@ -45,13 +45,19 @@ jobs:
         run: npm ci
 
       - name: Typecheck
-        run: npx tsc --noEmit
+        run: |
+          echo "[job-assistant] operation=typecheck start"
+          npx tsc --noEmit
+          echo "[job-assistant] operation=typecheck done"
 
       - name: Verify database connection
         run: npm run db:check
 
       - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+        run: |
+          echo "[job-assistant] operation=playwright:install start"
+          npx playwright install --with-deps chromium
+          echo "[job-assistant] operation=playwright:install done"
 
       - name: Restore and verify HH session
         run: npm run hh:auth:check

@@ -20,6 +20,7 @@ try {
   process.exit(1);
 }
 
+logInfo("operation=db:check start");
 logInfo(`database check target=${formatDatabaseUrlForLog(connectionString)}`);
 
 const pool = new pg.Pool({
@@ -35,7 +36,7 @@ try {
   } finally {
     client.release();
   }
-  logInfo("database check ok");
+  logInfo("operation=db:check done");
 } catch (e) {
   const msg = e instanceof Error ? e.message : String(e);
   console.error(`[job-assistant] database connection failed: ${msg}`);

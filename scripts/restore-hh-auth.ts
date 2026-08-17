@@ -18,13 +18,15 @@ import { logInfo } from "../src/utils/log.js";
 
 const stateB64 = process.env.HH_AUTH_STATE_B64?.trim();
 
+logInfo("operation=hh:auth:restore start");
+
 if (!stateB64) {
   if (process.env.CI === "true") {
     throw new Error(
       "HH_AUTH_STATE_B64 is required in CI. Export locally: npm run hh:auth:export",
     );
   }
-  logInfo("HH_AUTH_STATE_B64 not set — using existing .auth/hh-user.json");
+  logInfo("operation=hh:auth:restore skip HH_AUTH_STATE_B64 not set — using existing .auth/hh-user.json");
   process.exit(0);
 }
 
@@ -68,3 +70,5 @@ if (metaB64) {
   });
   logInfo(`wrote ${metaPath} from HH_BASE_URL (no HH_AUTH_META_B64)`);
 }
+
+logInfo("operation=hh:auth:restore done");

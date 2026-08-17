@@ -17,7 +17,7 @@ auth (cookies) → scrape (борда) → vacancies → rank (общий) → a
 ```text
 playwright:auth  →  .auth/hh-user.json
        ↓
-hh:auth:check    →  GET /applicant/vacancies  (не login, не captcha)
+hh:auth:check    →  главная `{base}/` без `<a role="button" data-qa="login">`, затем GET /applicant/vacancies
        ↓
 hh:scrape        →  /search/vacancy?text=…&area=113  →  /vacancy/{id}  →  vacancies (provider=hh, external_id)
        ↓
@@ -30,7 +30,7 @@ hh:apply         →  кнопка «Откликнуться»  →  applicatio
 | --- | --- |
 | Сайт | `HH_BASE_URL`, дефолт `https://novosibirsk.hh.ru` |
 | Логин | `{base}/account/login` |
-| Проба сессии | `{base}/applicant/vacancies` |
+| Проба сессии | главная `{base}/` без `a[role=button][data-qa=login]`, затем `{base}/applicant/vacancies` |
 | Поиск | `{base}/search/vacancy?text=&search_field=name&items_on_page=50&area=113` |
 | Карточка | `{base}/vacancy/{id}` |
 | Сессия | `.auth/hh-user.json`, `.auth/hh-session.meta.json` |

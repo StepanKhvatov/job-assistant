@@ -4,9 +4,10 @@ import { syncVacanciesFromScrape } from "../src/services/vacancy-scrape-sync.js"
 import { logInfo } from "../src/utils/log.js";
 import { prisma } from "../src/db/client.js";
 
+logInfo("operation=hh:scrape start");
 const result = await syncVacanciesFromScrape();
 
-logInfo(`summary ${JSON.stringify(result)}`);
+logInfo(`operation=hh:scrape summary ${JSON.stringify(result)}`);
 
 await prisma.$disconnect();
 

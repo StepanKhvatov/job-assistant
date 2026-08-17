@@ -16,7 +16,7 @@ import {
   APPLICATION_NO_RETRY_STATUSES,
   APPLICATION_STATUS,
 } from "../playwright/apply.js";
-import { assertHhSessionOnPage } from "../playwright/auth-session.js";
+import { assertHhSessionOnPage, formatHhSessionUi } from "../playwright/auth-session.js";
 import { assertValidHhAuth, HH_AUTH_PROVIDER } from "../playwright/auth.js";
 import { resolveScrapeEnv } from "../playwright/config.js";
 import { buildCoverLetterMessages } from "../prompts/cover-letter.js";
@@ -138,7 +138,7 @@ export async function applyToRankedVacancies(
   const toApply = vacancies.slice(0, applyEnv.maxPerRun);
 
   logInfo(
-    `[${HH_AUTH_PROVIDER}] apply start candidates=${toApply.length} min_score=${applyEnv.minScore} dry_run=${applyEnv.dryRun}`,
+    `[${HH_AUTH_PROVIDER}] apply start candidates=${toApply.length} min_score=${applyEnv.minScore} dry_run=${applyEnv.dryRun ? "yes" : "no"}`,
   );
 
   const errors: string[] = [];
@@ -161,8 +161,9 @@ export async function applyToRankedVacancies(
     });
     const page = await context.newPage();
 
-    await assertHhSessionOnPage(page, scrapeEnv.baseUrl);
-    logInfo(`[${HH_AUTH_PROVIDER}] session alive base=${scrapeEnv.baseUrl}`);
+    logInfo(`[${HH_AUTH_PROVIDER}] apply op=verify_session`);
+    const session = await assertHhSessionOnPage(page, scrapeEnv.baseUrl);
+    logInfo(`[${HH_AUTH_PROVIDER}] apply op=session_ok base=${scrapeEnv.baseUrl} ${formatHhSessionUi(session.ui)}`);
 
     for (let i = 0; i < toApply.length; i++) {
       const vacancy = toApply[i];
@@ -223,6 +224,11 @@ export async function applyToRankedVacancies(
               `[job-assistant] apply fail ${ref} error=${result.error ?? result.status}`,
             );
             errors.push(`${ref}: ${result.error ?? result.status}`);
+        }
+
+        if (result.sessionDead) {
+          logInfo(`apply abort remaining=${toApply.length - i - 1} reason=session_dead`);
+          break;
         }
       } catch (e) {
         failed++;

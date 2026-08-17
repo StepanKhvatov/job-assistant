@@ -7,7 +7,7 @@
  */
 import { chromium } from "playwright";
 
-import { assertHhSessionOnPage } from "../playwright/auth-session.js";
+import { assertHhSessionOnPage, formatHhSessionUi } from "../playwright/auth-session.js";
 import { assertValidHhAuth, HH_AUTH_PROVIDER } from "../playwright/auth.js";
 import { buildSearchUrl, resolveScrapeEnv, type ScrapeEnv } from "../playwright/config.js";
 import { collectVacancyIdsFromSearch } from "../playwright/search.js";
@@ -50,10 +50,11 @@ export async function syncVacanciesFromScrape(
     });
     const page = await context.newPage();
 
-    await assertHhSessionOnPage(page, baseUrl);
-    logInfo(`[${HH_AUTH_PROVIDER}] session alive base=${baseUrl}`);
+    logInfo(`[${HH_AUTH_PROVIDER}] scrape op=verify_session`);
+    const session = await assertHhSessionOnPage(page, baseUrl);
+    logInfo(`[${HH_AUTH_PROVIDER}] scrape op=session_ok base=${baseUrl} ${formatHhSessionUi(session.ui)}`);
 
-    logInfo(`search keyword="${keyword}"`);
+    logInfo(`scrape op=search keyword="${keyword}"`);
     const search = await collectVacancyIdsFromSearch(
       page,
       baseUrl,

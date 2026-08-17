@@ -15,6 +15,18 @@ export function hhLoginUrl(baseUrl: string): string {
   return `${baseUrl.replace(/\/$/, "")}/account/login`;
 }
 
+/** Главная выбранного хоста hh.ru (не карточка вакансии). */
+export function hhHomepageUrl(baseUrl: string): string {
+  return `${baseUrl.replace(/\/$/, "")}/`;
+}
+
+/**
+ * Ссылка «Войти» в шапке гостя: `<a role="button" data-qa="login">`.
+ * Наличие на главной значит, что сессия соискателя не активна.
+ * Кнопка «Откликнуться» на карточке вакансии у гостя тоже есть — это не вход.
+ */
+export const HH_GUEST_LOGIN_LINK_SELECTOR = 'a[role="button"][data-qa="login"]';
+
 export function hhSessionProbeUrl(baseUrl: string): string {
   return `${baseUrl.replace(/\/$/, "")}/applicant/vacancies`;
 }
@@ -118,6 +130,7 @@ export const HH_BOARD = {
     "Капча и 2FA на логине — только локальный headed-браузер.",
     "Cookies живут недели, не месяцы; CI сам их не обновляет.",
     "Сессия привязана к HH_BASE_URL (novosibirsk.hh.ru ≠ hh.ru).",
+    "Кнопка «Откликнуться» на вакансии есть у гостя; вход проверяется по a[role=button][data-qa=login] на главной.",
     "Смена вёрстки ломает селекторы data-qa.",
   ],
 } as const satisfies JobBoardSchema;

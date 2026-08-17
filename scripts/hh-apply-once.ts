@@ -4,9 +4,10 @@ import { applyToRankedVacancies } from "../src/services/vacancy-apply-sync.js";
 import { prisma } from "../src/db/client.js";
 import { logInfo } from "../src/utils/log.js";
 
+logInfo("operation=hh:apply start");
 const result = await applyToRankedVacancies();
 
-logInfo(`summary ${JSON.stringify(result)}`);
+logInfo(`operation=hh:apply summary ${JSON.stringify(result)}`);
 
 await prisma.$disconnect();
 

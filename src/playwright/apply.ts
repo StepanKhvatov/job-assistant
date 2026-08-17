@@ -17,6 +17,13 @@ import type { Locator, Page } from "playwright";
 
 import { CANDIDATE_PROFILE } from "../config/candidate-profile.js";
 import { logInfo } from "../utils/log.js";
+import {
+  formatHhSessionUi,
+  hhGuestLoginLink,
+  hhHeaderLoginButton,
+  hhLoginForm,
+  readHhSessionUi,
+} from "./auth-session.js";
 import { buildVacancyUrl } from "./config.js";
 
 /** Статусы записи в `applications`. */
@@ -49,6 +56,8 @@ export type ApplicationStatus = (typeof APPLICATION_STATUS)[keyof typeof APPLICA
 export type ApplyToVacancyResult = {
   status: ApplicationStatus;
   error?: string;
+  /** Cookies/UI гостя: остальные вакансии в этом прогоне нет смысла продолжать */
+  sessionDead?: boolean;
 };
 
 const RESPOND_SELECTORS = [
@@ -131,13 +140,13 @@ async function clickRespondButton(page: Page, externalId: string): Promise<void>
   for (const selector of RESPOND_SELECTORS) {
     const target = page.locator(selector).first();
     if ((await target.count()) === 0) {
-      logApply(externalId, "respond_probe", `selector=${selector} found=false`);
+      logApply(externalId, "respond_probe", `selector=${selector} found=no`);
       continue;
     }
 
     await target.scrollIntoViewIfNeeded();
     if (!(await target.isVisible().catch(() => false))) {
-      logApply(externalId, "respond_probe", `selector=${selector} visible=false`);
+      logApply(externalId, "respond_probe", `selector=${selector} visible=no`);
       continue;
     }
 
@@ -185,7 +194,32 @@ type ApplySurfaceState =
   | { kind: "form" }
   | { kind: "instant_applied" }
   | { kind: "test_page" }
-  | { kind: "foreign_country" };
+  | { kind: "foreign_country" }
+  | { kind: "login_required" };
+
+async function isLoginSurfaceVisible(page: Page): Promise<boolean> {
+  if ((await hhGuestLoginLink(page).count()) > 0) {
+    return true;
+  }
+  if (await hhLoginForm(page).isVisible().catch(() => false)) {
+    return true;
+  }
+  if (await hhHeaderLoginButton(page).isVisible().catch(() => false)) {
+    return true;
+  }
+  const loginDialog = page.getByRole("dialog").filter({ hasText: /войти|парол/i }).first();
+  return loginDialog.isVisible().catch(() => false);
+}
+
+async function countRespondButtons(page: Page): Promise<number> {
+  let count = 0;
+  for (const selector of RESPOND_SELECTORS) {
+    count += await page.locator(selector).count();
+  }
+  const fallback = page.getByRole("button", { name: /откликнуться/i });
+  count += await fallback.count();
+  return count;
+}
 
 async function isForeignCountryPopupVisible(page: Page): Promise<boolean> {
   const dialog = page.getByRole("alertdialog").filter({ hasText: FOREIGN_COUNTRY_TEXT });
@@ -225,6 +259,11 @@ async function waitForApplySurface(page: Page, initialUrl: string, externalId: s
 
   while (Date.now() < deadline) {
     polls++;
+
+    if (await isLoginSurfaceVisible(page)) {
+      logApply(externalId, "surface", "kind=login_required");
+      return { kind: "login_required" };
+    }
 
     if (await page.getByText(SUCCESS_TEXT).first().isVisible().catch(() => false)) {
       logApply(externalId, "surface", "kind=instant_applied");
@@ -266,7 +305,12 @@ async function waitForApplySurface(page: Page, initialUrl: string, externalId: s
     }
 
     if (polls % 10 === 0) {
-      logApply(externalId, "surface_poll", `waiting url=${page.url()} polls=${polls}`);
+      const ui = await readHhSessionUi(page);
+      logApply(
+        externalId,
+        "surface_poll",
+        `waiting url=${page.url()} polls=${polls} ${formatHhSessionUi(ui)}`,
+      );
     }
 
     await page.waitForTimeout(300);
@@ -649,13 +693,28 @@ export async function applyToVacancy(
   dryRun: boolean,
 ): Promise<ApplyToVacancyResult> {
   const vacancyUrl = buildVacancyUrl(baseUrl, externalId);
-  logApply(externalId, "start", `url=${vacancyUrl} dry_run=${dryRun}`);
+  logApply(externalId, "start", `url=${vacancyUrl} dry_run=${dryRun ? "yes" : "no"}`);
 
   await page.goto(vacancyUrl, { waitUntil: "domcontentloaded" });
   await page.waitForLoadState("networkidle").catch(() => {});
-  logApply(externalId, "page_loaded", `url=${page.url()}`);
+  const pageUi = await readHhSessionUi(page);
+  const respondCount = await countRespondButtons(page);
+  logApply(
+    externalId,
+    "page_loaded",
+    `url=${page.url()} ${formatHhSessionUi(pageUi)} respond_button=${respondCount > 0 ? "yes" : "no"} note=respond_button_is_not_login_proof`,
+  );
 
   await dismissBlockingOverlays(page, externalId);
+
+  if (pageUi.loginLink || pageUi.loginButton || pageUi.loginForm) {
+    logApply(externalId, "done", "status=failed session=guest_on_vacancy");
+    return {
+      status: APPLICATION_STATUS.failed,
+      error: `Applicant session missing on vacancy page (${formatHhSessionUi(pageUi)})`,
+      sessionDead: true,
+    };
+  }
 
   const alreadyText = page.getByText(/вы уже откликнулись|отклик отправлен|откликнулись на вакансию/i);
   if ((await alreadyText.count()) > 0) {
@@ -671,6 +730,14 @@ export async function applyToVacancy(
     logApply(externalId, "error", msg);
     if (msg.includes("Response button not found")) {
       return { status: APPLICATION_STATUS.noButton };
+    }
+    if (await isLoginSurfaceVisible(page).catch(() => false)) {
+      logApply(externalId, "done", "status=failed session=login_after_respond");
+      return {
+        status: APPLICATION_STATUS.failed,
+        error: "Login form after respond click — session is guest",
+        sessionDead: true,
+      };
     }
     if (await isForeignCountryPopupVisible(page).catch(() => false)) {
       await dismissForeignCountryPopup(page, externalId);
@@ -688,6 +755,15 @@ export async function applyToVacancy(
   if (surface.kind === "test_page") {
     logApply(externalId, "done", "status=skipped_questionnaire reason=test_page");
     return { status: APPLICATION_STATUS.skippedQuestionnaire };
+  }
+
+  if (surface.kind === "login_required") {
+    logApply(externalId, "done", "status=failed session=login_required");
+    return {
+      status: APPLICATION_STATUS.failed,
+      error: "Login form instead of apply form — session is guest",
+      sessionDead: true,
+    };
   }
 
   if (surface.kind === "foreign_country") {
