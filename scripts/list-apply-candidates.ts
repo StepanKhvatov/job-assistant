@@ -4,6 +4,7 @@ import { prisma } from "../src/db/client.js";
 
 const rows = await prisma.vacancy.findMany({
   where: {
+    provider: "hh",
     applications: {
       none: {
         status: { in: ["applied", "already_applied", "skipped_foreign_country"] },
@@ -22,7 +23,7 @@ const rows = await prisma.vacancy.findMany({
 
 for (const v of rows) {
   console.log(
-    `${v.hhId}\tscore=${v.analyses[0]?.score ?? "?"}\t${v.salary ?? "-"}\t${v.title?.slice(0, 70)}`,
+    `${v.provider}:${v.externalId}\tscore=${v.analyses[0]?.score ?? "?"}\t${v.salary ?? "-"}\t${v.title?.slice(0, 70)}`,
   );
 }
 

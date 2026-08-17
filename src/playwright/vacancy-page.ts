@@ -35,9 +35,9 @@ function parsePublishedAt(text: string | null | undefined): Date | null {
 export async function scrapeVacancyDetailById(
   page: Page,
   baseUrl: string,
-  hhId: string,
+  externalId: string,
 ): Promise<ScrapedVacancyDetail> {
-  const url = buildVacancyUrl(baseUrl, hhId);
+  const url = buildVacancyUrl(baseUrl, externalId);
   await page.goto(url, { waitUntil: "domcontentloaded" });
   await page.locator(SEL.title).first().waitFor({ state: "visible", timeout: 30_000 }).catch(() => {});
 
@@ -102,7 +102,8 @@ export async function scrapeVacancyDetailById(
   }, SEL);
 
   return {
-    hhId,
+    provider: "hh",
+    externalId,
     title: data.title ?? "Без названия",
     company: data.company,
     salary: data.salary,

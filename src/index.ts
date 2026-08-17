@@ -7,6 +7,7 @@ import { registerRoutes } from "./api/index.js";
 import { fastifyEnvSchema } from "./config/env.js";
 import { prisma } from "./db/client.js";
 
+/** HTTP-обёртка (health + запасной HH API sync). Основной цикл — npm-скрипты, не этот сервер. */
 const app = Fastify({ logger: true });
 
 await app.register(fastifyEnv, {

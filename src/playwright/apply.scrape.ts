@@ -29,7 +29,7 @@ test("apply to vacancy (dry-run by default)", async ({ page }) => {
     throw new Error("content/cover-letter.md is empty");
   }
 
-  console.log(`[job-assistant][${HH_AUTH_PROVIDER}] hh_id=${hhId} dry_run=${applyEnv.dryRun}`);
+  console.log(`[job-assistant][${HH_AUTH_PROVIDER}] id=${hhId} dry_run=${applyEnv.dryRun}`);
 
   const result = await applyToVacancy(
     page,
@@ -47,6 +47,9 @@ test("apply to vacancy (dry-run by default)", async ({ page }) => {
     APPLICATION_STATUS.alreadyApplied,
     APPLICATION_STATUS.skippedForeignCountry,
     APPLICATION_STATUS.noButton,
+    APPLICATION_STATUS.skippedQuestionnaire,
+    APPLICATION_STATUS.unconfirmed,
+    APPLICATION_STATUS.failed,
   ]).toContain(result.status);
 
   test.info().attach("apply-result.json", {

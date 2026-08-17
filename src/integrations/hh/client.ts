@@ -1,3 +1,4 @@
+import { sleep } from "../../utils/sleep.js";
 import {
   HH_DEFAULT_BASE_URL,
   HH_DEFAULT_DETAIL_DELAY_MS,
@@ -9,14 +10,10 @@ import type { HhVacanciesSearchResponse, HhVacancyDetail, HhVacancyListItem } fr
 export type HhClientOptions = {
   baseUrl?: string;
   userAgent: string;
-  /** Токен приложения с https://dev.hh.ru/admin (обязателен для /vacancies) */
+  /** Токен приложения с https://dev.hh.ru/admin. Refresh нет — см. docs/AUTH.md */
   accessToken?: string;
   detailDelayMs?: number;
 };
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 export class HhApiClient {
   private readonly baseUrl: string;

@@ -1,26 +1,53 @@
 import { prisma } from "../db/client.js";
+import type { JobBoardId } from "../providers/types.js";
 import type { ScrapedVacancyDetail } from "../playwright/types.js";
 import { logDbFail, logDbOk } from "../utils/log.js";
 
-export async function findExistingVacancyHhIds(hhIds: string[]): Promise<Set<string>> {
-  if (hhIds.length === 0) {
-    return new Set();
+export type ExistingVacancyScrapeState = {
+  /** Есть описание — карточку не открываем */
+  skip: Set<string>;
+  /** Строка есть, description пустой — перепарсим */
+  refresh: Set<string>;
+};
+
+export async function findExistingVacancyScrapeState(
+  provider: JobBoardId,
+  externalIds: string[],
+): Promise<ExistingVacancyScrapeState> {
+  const skip = new Set<string>();
+  const refresh = new Set<string>();
+  if (externalIds.length === 0) {
+    return { skip, refresh };
   }
 
   const rows = await prisma.vacancy.findMany({
-    where: { hhId: { in: hhIds } },
-    select: { hhId: true },
+    where: { provider, externalId: { in: externalIds } },
+    select: { externalId: true, description: true },
   });
 
-  return new Set(rows.map((row) => row.hhId));
+  for (const row of rows) {
+    if (row.description?.trim()) {
+      skip.add(row.externalId);
+    } else {
+      refresh.add(row.externalId);
+    }
+  }
+
+  return { skip, refresh };
 }
 
 export async function upsertScrapedVacancy(detail: ScrapedVacancyDetail): Promise<boolean> {
   try {
     await prisma.vacancy.upsert({
-      where: { hhId: detail.hhId },
+      where: {
+        provider_externalId: {
+          provider: detail.provider,
+          externalId: detail.externalId,
+        },
+      },
       create: {
-        hhId: detail.hhId,
+        provider: detail.provider,
+        externalId: detail.externalId,
         title: detail.title,
         company: detail.company,
         salary: detail.salary,
@@ -37,11 +64,11 @@ export async function upsertScrapedVacancy(detail: ScrapedVacancyDetail): Promis
         publishedAt: detail.publishedAt,
       },
     });
-    logDbOk(detail.hhId, detail.title);
+    logDbOk(detail.provider, detail.externalId, detail.title);
     return true;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    logDbFail(detail.hhId, msg);
+    logDbFail(detail.provider, detail.externalId, msg);
     return false;
   }
 }

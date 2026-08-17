@@ -7,20 +7,31 @@ datasource db {
   provider = "postgresql"
 }
 
+/// Джоб-борд. Совпадает с `JobBoardId` в `src/providers/types.ts`.
+enum JobBoardProvider {
+  hh
+  linkedin
+}
+
 model Vacancy {
-  id          String   @id @default(cuid())
-  hhId        String   @unique @map("hh_id")
+  /// Внутренний ключ. FK analyses/applications ссылаются сюда, не на id борда.
+  id          String           @id @default(cuid())
+  provider    JobBoardProvider
+  /// Id вакансии у провайдера (hh.ru /vacancy/{id}, LinkedIn /jobs/view/{id}).
+  externalId  String           @map("external_id")
   title       String
   company     String?
   salary      String?
   url         String
-  description String?  @db.Text
-  publishedAt DateTime? @map("published_at")
-  createdAt   DateTime @default(now()) @map("created_at")
+  description String?          @db.Text
+  publishedAt DateTime?        @map("published_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
 
   analyses     Analysis[]     @relation("VacancyAnalyses")
-  applications Application[] @relation("VacancyApplications")
+  applications Application[]  @relation("VacancyApplications")
 
+  @@unique([provider, externalId], map: "vacancies_provider_external_id_key")
+  @@index([provider], map: "vacancies_provider_idx")
   @@map("vacancies")
 }
 

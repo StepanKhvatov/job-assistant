@@ -2,6 +2,9 @@
 
 Парсер: `src/config/env.ts` (Zod), `getEnv()`.
 
+Сессии hh.ru (cookies, не OAuth): [AUTH.md](./AUTH.md).  
+Карта HH / LinkedIn: [PROVIDERS.md](./PROVIDERS.md).
+
 ## `.env` (pipeline)
 
 ```env
@@ -66,3 +69,4 @@ APPLY_DRY_RUN=true
 | `APPLY_MIN_SCORE` | 75 |
 | `APPLY_MAX_PER_RUN` | 30 |
 | `RETENTION_DAYS` | 45 |
+| `RETENTION_INLINE` | `true` локально; в CI `false` |

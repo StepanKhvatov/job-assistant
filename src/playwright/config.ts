@@ -1,8 +1,8 @@
 import { getEnv } from "../config/env.js";
-import { HH_AREA_RUSSIA } from "../integrations/hh/constants.js";
+import { HH_BOARD, hhSearchUrl, hhVacancyUrl } from "../providers/hh.js";
 import { resolveAuthPaths } from "./auth.js";
 
-export const DEFAULT_SCRAPE_BASE_URL = "https://novosibirsk.hh.ru";
+export const DEFAULT_SCRAPE_BASE_URL = HH_BOARD.defaultSiteUrl;
 export { DEFAULT_AUTH_STATE_PATH, DEFAULT_AUTH_META_PATH, HH_AUTH_PROVIDER } from "./auth.js";
 
 export type ScrapeEnv = {
@@ -29,15 +29,11 @@ export function resolveScrapeEnv(overrides?: Partial<ScrapeEnv>): ScrapeEnv {
   };
 }
 
+/** Поисковая выдача hh.ru. Параметры — `src/providers/hh.ts`. */
 export function buildSearchUrl(baseUrl: string, keyword: string): string {
-  const params = new URLSearchParams();
-  params.set("text", keyword.trim());
-  params.set("search_field", "name");
-  params.set("items_on_page", "50");
-  params.set("area", String(HH_AREA_RUSSIA));
-  return `${baseUrl}/search/vacancy?${params.toString()}`;
+  return hhSearchUrl(baseUrl, keyword);
 }
 
-export function buildVacancyUrl(baseUrl: string, hhId: string): string {
-  return `${baseUrl}/vacancy/${hhId}`;
+export function buildVacancyUrl(baseUrl: string, externalId: string): string {
+  return hhVacancyUrl(baseUrl, externalId);
 }

@@ -26,7 +26,7 @@
 ## URL
 
 ```
-{HH_SCRAPE_BASE_URL}/vacancy/{hhId}
+{HH_SCRAPE_BASE_URL}/vacancy/{id}
 ```
 
 Без utm-параметров (короче и стабильнее).

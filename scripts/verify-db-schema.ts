@@ -22,7 +22,8 @@ console.log(
       ok: true,
       vacancy: {
         id: vacancy.id,
-        hhId: vacancy.hhId,
+        provider: vacancy.provider,
+        externalId: vacancy.externalId,
         title: vacancy.title,
       },
       relation: {
@@ -37,7 +38,7 @@ console.log(
             }
           : null,
       },
-      hint: "FK analyses.vacancy_id → vacancies.id (not hh_id). Supabase Studio: refresh schema.",
+      hint: "FK analyses.vacancy_id → vacancies.id (internal cuid, not external_id).",
     },
     null,
     2,

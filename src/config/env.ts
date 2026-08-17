@@ -44,6 +44,7 @@ const envSchema = z.object({
   APPLY_DRY_RUN: z.boolean(),
 
   RETENTION_DAYS: z.number().int(),
+  RETENTION_INLINE: z.boolean(),
 
   HH_VACANCY_ID: z.string().optional(),
 
@@ -115,6 +116,7 @@ function parseRawEnv(raw: NodeJS.ProcessEnv = process.env): AppEnv {
       0,
       365,
     ),
+    RETENTION_INLINE: falseUnless(raw.RETENTION_INLINE, true),
 
     HH_VACANCY_ID: raw.HH_VACANCY_ID?.trim(),
 

@@ -1,26 +1,29 @@
+/**
+ * Отклик по уже проранжированным вакансиям hh.ru.
+ *
+ * Берёт vacancies с score ≥ порога, без блокирующего applications.status.
+ * Письмо: DeepSeek, иначе content/cover-letter.md.
+ */
 import { chromium } from "playwright";
 
 import { resolveApplyEnv, type ApplyEnv } from "../config/apply-env.js";
 import { loadCoverLetter } from "../config/load-content.js";
 import { resolveRankEnv } from "../config/rank-env.js";
+import { prisma } from "../db/client.js";
 import { writeCoverLetterWithDeepSeek } from "../integrations/deepseek/client.js";
-import { assertHhSessionOnPage } from "../playwright/auth-session.js";
-import { assertValidHhAuth, HH_AUTH_PROVIDER } from "../playwright/auth.js";
-import { resolveScrapeEnv } from "../playwright/config.js";
 import {
   applyToVacancy,
   APPLICATION_NO_RETRY_STATUSES,
   APPLICATION_STATUS,
 } from "../playwright/apply.js";
+import { assertHhSessionOnPage } from "../playwright/auth-session.js";
+import { assertValidHhAuth, HH_AUTH_PROVIDER } from "../playwright/auth.js";
+import { resolveScrapeEnv } from "../playwright/config.js";
 import { buildCoverLetterMessages } from "../prompts/cover-letter.js";
-import type { RetentionCleanupResult } from "./vacancy-retention.js";
-import { cleanupStaleVacancies } from "./vacancy-retention.js";
-import { prisma } from "../db/client.js";
-import { logInfo } from "../utils/log.js";
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+import { logInfo, vacancyRef } from "../utils/log.js";
+import { sleep } from "../utils/sleep.js";
+import { truncate } from "../utils/text.js";
+import { cleanupStaleVacanciesIfInline, type RetentionCleanupResult } from "./vacancy-retention.js";
 
 export type ApplySyncResult = {
   minScore: number;
@@ -32,6 +35,7 @@ export type ApplySyncResult = {
   skippedNoButton: number;
   skippedForeignCountry: number;
   skippedQuestionnaire: number;
+  unconfirmed: number;
   failed: number;
   retention: RetentionCleanupResult;
   errors: string[];
@@ -54,16 +58,10 @@ async function saveApplication(
   });
 }
 
-function truncate(text: string, max: number): string {
-  if (text.length <= max) {
-    return text;
-  }
-  return `${text.slice(0, max)}…`;
-}
-
 async function buildApplyCoverLetter(
   vacancy: {
-    hhId: string;
+    provider: string;
+    externalId: string;
     title: string;
     company: string | null;
     salary: string | null;
@@ -83,7 +81,8 @@ async function buildApplyCoverLetter(
     const generated = await writeCoverLetterWithDeepSeek(
       rankEnv,
       buildCoverLetterMessages({
-        hhId: vacancy.hhId,
+        provider: vacancy.provider,
+        externalId: vacancy.externalId,
         title: vacancy.title,
         company: vacancy.company,
         salary: vacancy.salary,
@@ -97,11 +96,13 @@ async function buildApplyCoverLetter(
       return fallbackCoverLetter;
     }
 
-    logInfo(`apply cover_letter generated hh_id=${vacancy.hhId}`);
+    logInfo(`apply cover_letter generated ${vacancyRef(vacancy.provider, vacancy.externalId)}`);
     return generated;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    logInfo(`apply cover_letter fallback hh_id=${vacancy.hhId} reason="${msg}"`);
+    logInfo(
+      `apply cover_letter fallback ${vacancyRef(vacancy.provider, vacancy.externalId)} reason="${msg}"`,
+    );
     return fallbackCoverLetter;
   }
 }
@@ -121,6 +122,7 @@ export async function applyToRankedVacancies(
 
   const vacancies = await prisma.vacancy.findMany({
     where: {
+      provider: "hh",
       applications: {
         none: { status: { in: [...APPLICATION_NO_RETRY_STATUSES] } },
       },
@@ -146,6 +148,7 @@ export async function applyToRankedVacancies(
   let skippedNoButton = 0;
   let skippedForeignCountry = 0;
   let skippedQuestionnaire = 0;
+  let unconfirmed = 0;
   let failed = 0;
 
   const browser = await chromium.launch({ headless: applyEnv.headless });
@@ -165,14 +168,15 @@ export async function applyToRankedVacancies(
       const vacancy = toApply[i];
       const score = vacancy.analyses[0]?.score ?? 0;
       let coverLetter = fallbackCoverLetter;
-      logInfo(`apply ${i + 1}/${toApply.length} hh_id=${vacancy.hhId} score=${score}`);
+      const ref = vacancyRef(vacancy.provider, vacancy.externalId);
+      logInfo(`apply ${i + 1}/${toApply.length} ${ref} score=${score}`);
 
       try {
         coverLetter = await buildApplyCoverLetter(vacancy, fallbackCoverLetter);
         const result = await applyToVacancy(
           page,
           scrapeEnv.baseUrl,
-          vacancy.hhId,
+          vacancy.externalId,
           coverLetter,
           applyEnv.dryRun,
         );
@@ -187,40 +191,44 @@ export async function applyToRankedVacancies(
         switch (result.status) {
           case APPLICATION_STATUS.applied:
             applied++;
-            logInfo(`apply ok hh_id=${vacancy.hhId}`);
+            logInfo(`apply ok ${ref}`);
             break;
           case APPLICATION_STATUS.dryRun:
             dryRunCount++;
-            logInfo(`apply dry_run hh_id=${vacancy.hhId}`);
+            logInfo(`apply dry_run ${ref}`);
             break;
           case APPLICATION_STATUS.alreadyApplied:
             skippedAlready++;
-            logInfo(`apply skip hh_id=${vacancy.hhId} (already applied)`);
+            logInfo(`apply skip ${ref} (already applied)`);
             break;
           case APPLICATION_STATUS.noButton:
             skippedNoButton++;
-            logInfo(`apply skip hh_id=${vacancy.hhId} (no button)`);
+            logInfo(`apply skip ${ref} (no button)`);
             break;
           case APPLICATION_STATUS.skippedForeignCountry:
             skippedForeignCountry++;
-            logInfo(`apply skip hh_id=${vacancy.hhId} (foreign country)`);
+            logInfo(`apply skip ${ref} (foreign country)`);
             break;
           case APPLICATION_STATUS.skippedQuestionnaire:
             skippedQuestionnaire++;
-            logInfo(`apply skip hh_id=${vacancy.hhId} (questionnaire)`);
+            logInfo(`apply skip ${ref} (questionnaire)`);
+            break;
+          case APPLICATION_STATUS.unconfirmed:
+            unconfirmed++;
+            logInfo(`apply unconfirmed ${ref}`);
             break;
           default:
             failed++;
             console.error(
-              `[job-assistant] apply fail hh_id=${vacancy.hhId} error=${result.error ?? result.status}`,
+              `[job-assistant] apply fail ${ref} error=${result.error ?? result.status}`,
             );
-            errors.push(`hh_id=${vacancy.hhId}: ${result.error ?? result.status}`);
+            errors.push(`${ref}: ${result.error ?? result.status}`);
         }
       } catch (e) {
         failed++;
         const msg = e instanceof Error ? e.message : String(e);
-        console.error(`[job-assistant] apply fail hh_id=${vacancy.hhId} error=${msg}`);
-        errors.push(`hh_id=${vacancy.hhId}: ${msg}`);
+        console.error(`[job-assistant] apply fail ${ref} error=${msg}`);
+        errors.push(`${ref}: ${msg}`);
         try {
           await saveApplication(vacancy.id, APPLICATION_STATUS.failed, coverLetter, msg);
         } catch {
@@ -236,10 +244,10 @@ export async function applyToRankedVacancies(
     await browser.close();
   }
 
-  const retention = await cleanupStaleVacancies();
+  const retention = await cleanupStaleVacanciesIfInline();
 
   logInfo(
-    `apply finished applied=${applied} dry_run=${dryRunCount} failed=${failed} already=${skippedAlready} no_button=${skippedNoButton} foreign_country=${skippedForeignCountry} questionnaire=${skippedQuestionnaire}`,
+    `apply finished applied=${applied} dry_run=${dryRunCount} failed=${failed} unconfirmed=${unconfirmed} already=${skippedAlready} no_button=${skippedNoButton} foreign_country=${skippedForeignCountry} questionnaire=${skippedQuestionnaire}`,
   );
 
   return {
@@ -252,6 +260,7 @@ export async function applyToRankedVacancies(
     skippedNoButton,
     skippedForeignCountry,
     skippedQuestionnaire,
+    unconfirmed,
     failed,
     retention,
     errors,

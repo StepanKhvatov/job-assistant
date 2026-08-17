@@ -59,7 +59,12 @@ async function upsertVacancyFromHh(client: HhApiClient, item: HhVacancyListItem,
     );
 
     await prisma.vacancy.upsert({
-      where: { hhId: data.hhId },
+      where: {
+        provider_externalId: {
+          provider: data.provider,
+          externalId: data.externalId,
+        },
+      },
       create: data,
       update: {
         title: data.title,
@@ -72,7 +77,7 @@ async function upsertVacancyFromHh(client: HhApiClient, item: HhVacancyListItem,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    errors.push(`hh_id=${item.id}: ${msg}`);
+    errors.push(`provider=hh id=${item.id}: ${msg}`);
   }
 }
 

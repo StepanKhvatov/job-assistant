@@ -16,4 +16,6 @@
 
 ## Запуск
 
-Автоматически после `hh:scrape`, `ai:rank`, `hh:apply`. Вручную: `npm run db:cleanup`.
+Автоматически после одиночных `hh:scrape` / `ai:rank` / `hh:apply` (`RETENTION_INLINE=true` по умолчанию).
+
+В CI и `npm run hh:pipeline` инлайн-чистка выключена (`RETENTION_INLINE=false`) — один вызов в конце: `npm run db:cleanup`.

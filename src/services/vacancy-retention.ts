@@ -54,3 +54,21 @@ export async function cleanupStaleVacancies(
     deletedVacancies: count,
   };
 }
+
+/** После scrape/rank/apply. В CI (`RETENTION_INLINE=false`) чистка один раз в конце пайплайна. */
+export async function cleanupStaleVacanciesIfInline(
+  options?: Partial<RetentionEnv>,
+): Promise<RetentionCleanupResult> {
+  const env = { ...resolveRetentionEnv(), ...options };
+  if (!env.inline) {
+    logInfo("retention skip (RETENTION_INLINE=false; run npm run db:cleanup)");
+    return {
+      enabled: false,
+      retentionDays: env.retentionDays,
+      cutoff: null,
+      deletedVacancies: 0,
+    };
+  }
+
+  return cleanupStaleVacancies(options);
+}

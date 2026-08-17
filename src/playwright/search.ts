@@ -1,13 +1,14 @@
 import type { Page } from "playwright";
 
-import { buildSearchUrl } from "./config.js";
+import { HH_SEARCH_ITEMS_PER_PAGE } from "../providers/hh.js";
 import { logInfo } from "../utils/log.js";
+import { buildSearchUrl } from "./config.js";
 
 const SERP_ROOT = '[data-qa="vacancy-serp__results"], main';
 const VACANCY_CARD = '[data-qa="vacancy-serp__vacancy"]';
 const PAGER_BLOCK = '[data-qa="pager-block"]';
 
-export const HH_SEARCH_ITEMS_PER_PAGE = 50;
+export { HH_SEARCH_ITEMS_PER_PAGE };
 
 export type SearchCollectionResult = {
   ids: string[];

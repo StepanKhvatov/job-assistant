@@ -31,3 +31,4 @@ console.log(
 );
 console.log(`Cookies: ${fullState.cookies.length} → ${slim.cookies.length} (hh.ru domains only).`);
 console.log("\nThen remove HH_EMAIL / HH_PASSWORD from CI workflow (login runs only locally).");
+console.log("Runbook: docs/AUTH.md");

@@ -1,7 +1,8 @@
 import { loadCoverLetter, loadRankContent } from "../config/load-content.js";
 
 export type VacancyForCoverLetter = {
-  hhId: string;
+  provider: string;
+  externalId: string;
   title: string;
   company: string | null;
   salary: string | null;
@@ -35,7 +36,8 @@ ${baseCoverLetter}
 ---
 
 Вакансия:
-- id: ${vacancy.hhId}
+- provider: ${vacancy.provider}
+- id: ${vacancy.externalId}
 - Название: ${vacancy.title}
 - Компания: ${vacancy.company ?? "не указана"}
 - Зарплата: ${vacancy.salary ?? "не указана"}

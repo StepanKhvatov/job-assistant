@@ -17,7 +17,7 @@ function createPrismaClient() {
     dbConfig = parseDatabaseUrl(connectionString);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    throw new Error(`${msg} (target ${formatDatabaseUrlForLog(connectionString)})`);
+    throw new Error(`${msg} (target ${formatDatabaseUrlForLog(connectionString)})`, { cause: e });
   }
 
   const pool = new pg.Pool({

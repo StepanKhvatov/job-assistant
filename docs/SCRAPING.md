@@ -2,6 +2,8 @@
 
 Соискательский API закрыт → вакансии собираем через браузерную сессию.
 
+Обновление cookies: [AUTH.md](./AUTH.md). Схема борда: [PROVIDERS.md](./PROVIDERS.md).
+
 ## Поток
 
 1. **Один раз локально:** `npm run playwright:auth` — логин на **hh.ru** (`HH_EMAIL` / `HH_PASSWORD`), при капче — `HH_SCRAPE_HEADLESS=false`
@@ -14,9 +16,9 @@
    Фраза: секция **«Поиск на hh.ru»** в `content/candidate-profile.md` (или `HH_SEARCH_KEYWORD` в `.env`).
 7. Из `[data-qa="title"]` читается строка вида **«Найдено N вакансий»** → число страниц = `ceil(N / 50)`.
 8. На каждой странице — id карточек `[data-qa="vacancy-serp__vacancy"]`; переход делается прямым `goto` на тот же search URL с `page=0..N-1`.
-9. Дедуп id в памяти; в БД — `hh_id` unique + upsert; уже сохранённые id **не парсятся повторно** (skip).
+9. Дедуп id в памяти; в БД — unique `(provider, external_id)` + upsert; с описанием **не парсятся повторно**, без description — refresh.
 10. Карточка: `{baseUrl}/vacancy/{id}` → парсинг title, company, salary, description
-11. `upsert` в таблицу `vacancies` по `hh_id`
+11. `upsert` в таблицу `vacancies` по `(provider=hh, external_id)`
 
 ## Команды
 
@@ -53,15 +55,15 @@ npm run hh:auth:export
 | `search title="Найдено N вакансий"` | Содержимое заголовка поиска из `[data-qa="title"]` |
 | `search total reported=N total_pages=M` | Всего вакансий по выдаче и сколько страниц нужно обойти |
 | `search page N/M: +K ids` | Собрано новых id с страницы (без дублей) |
-| `db ok hh_id=… title="…"` | Запись в Supabase успешна |
-| `db fail hh_id=… error=…` | Ошибка Prisma / БД |
-| `scrape fail hh_id=…` | Не открылась или не распарсилась карточка |
+| `db ok provider=hh id=… title="…"` | Запись в Supabase успешна |
+| `db fail provider=hh id=… error=…` | Ошибка Prisma / БД |
+| `scrape fail provider=hh id=…` | Не открылась или не распарсилась карточка |
 | `skip (already in db)` | Вакансия уже есть в `vacancies` — карточку не открываем |
 | `finished upserted=… skipped_existing=…` | Итог прогона |
 
 ## Карточка вакансии
 
-- URL: `{baseUrl}/vacancy/{hhId}`
+- URL: `{baseUrl}/vacancy/{id}`
 - Селекторы: [VACANCY_PAGE_SELECTORS.md](./VACANCY_PAGE_SELECTORS.md)
 ## Риски
 

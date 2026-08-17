@@ -33,7 +33,7 @@
     "hh:scrape": "tsx scripts/hh-scrape-once.ts",
     "ai:rank": "tsx scripts/ai-rank-once.ts",
     "hh:apply": "tsx scripts/hh-apply-once.ts",
-    "hh:pipeline": "npm run hh:auth:restore && npm run hh:scrape && npm run ai:rank && npm run hh:apply"
+    "hh:pipeline": "RETENTION_INLINE=false npm run hh:auth:restore && RETENTION_INLINE=false npm run hh:scrape && RETENTION_INLINE=false npm run ai:rank && RETENTION_INLINE=false npm run hh:apply && npm run db:cleanup"
   },
   "repository": {
     "type": "git",

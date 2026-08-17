@@ -1,8 +1,13 @@
 # job-assistant
 
-Personal AI-assisted job search: HH.ru scrape → AI ranking → auto-apply via Playwright.
+Personal AI-assisted job search: scrape → AI ranking → auto-apply.
 
-**Stack:** Node.js, TypeScript, Fastify, Prisma, Supabase (Postgres), GitHub Actions, Telegram, DeepSeek.
+**Сейчас работает HeadHunter.** LinkedIn — схема без рантайма (`src/providers/linkedin.ts`).
+
+Карта сервисов: [docs/PROVIDERS.md](docs/PROVIDERS.md).  
+Как обновлять cookies/токены: [docs/AUTH.md](docs/AUTH.md).
+
+**Stack:** Node.js, TypeScript, Fastify (health/API sync), Prisma, Supabase (Postgres), GitHub Actions, DeepSeek.
 
 ## Prerequisites
 
@@ -78,6 +83,12 @@ npm run hh:run
 HH_SCRAPE_HEADLESS=false npm run playwright:auth
 ```
 
+Проверка и обновление cookies: [docs/AUTH.md](docs/AUTH.md).
+
+```bash
+npm run hh:auth:check
+```
+
 Экспорт сессии для GitHub Actions:
 
 ```bash
@@ -111,10 +122,12 @@ npm run ai:rank
 
 Ежедневный workflow: `.github/workflows/hh-pipeline.yml`
 
-- расписание: **~10:17 МСК** (`17 7 * * *` UTC) — минута сдвинута с `:00`, иначе GitHub часто откладывает или пропускает cron
-- шаги: `npm run hh:pipeline` (restore сессии → scrape → rank → apply)
-- ручной запуск: `workflow_dispatch`
-- логин в CI **не выполняется** — только восстановление cookies из secret
+- расписание: **~10:17 МСК** (`17 7 * * *` UTC)
+- ручной запуск: **Actions → HH Pipeline → Run workflow**
+- шаги: проверка сессии → scrape → rank → apply → cleanup
+- логин в CI **не выполняется** — только cookies из secret; как их обновить: [docs/AUTH.md](docs/AUTH.md)
+- `APPLY_DRY_RUN` по умолчанию `true` (секрет можно поставить в `false` для реальной отправки)
+- `RETENTION_INLINE=false` — чистка вакансий один раз в конце, не после каждого шага
 
 Нужные GitHub Secrets:
 
@@ -136,6 +149,8 @@ npm run hh:sync
 # или POST /internal/hh/sync с x-cron-secret
 ```
 
+Это **не** замена откликам и **не** OAuth соискателя. Токен не refresh-ится сам — [docs/AUTH.md](docs/AUTH.md).
+
 ## Scripts
 
 | Script                    | Description                              |
@@ -153,6 +168,7 @@ npm run hh:sync
 | `npm run hh:apply`        | Отклик по score (см. APPLY_DRY_RUN)         |
 | `npm run hh:pipeline`     | restore → scrape → rank → apply             |
 | `npm run playwright:auth` | Логин → `.auth/hh-user.json` (локально)     |
+| `npm run hh:auth:check`   | Проверка, что cookies живые                 |
 | `npm run hh:auth:export`  | Base64 сессии для GitHub Secrets            |
 | `npm run hh:sync`         | HeadHunter API sync (if token available) |
 
@@ -165,26 +181,18 @@ npm run hh:sync
 ## Project structure
 
 ```
-content/
-  resume/        # master.md, experience.yaml
-  candidate-profile.md
-  cover-letter.md
+content/           # профиль, письмо, резюме — правите вы, не агент
+docs/
+  PROVIDERS.md     # мастер-схемы HH и LinkedIn
+  AUTH.md          # как обновлять cookies и токены
 src/
-  api/           # HTTP routes
-  config/        # env schema, candidate-profile (роль/навыки без ПДн)
-  db/            # Prisma client
-  services/
-  integrations/  # HH, DeepSeek
-  workers/         # cron jobs
-  telegram/
-  playwright/    # search + vacancy page parsers
-  prompts/
-  utils/
+  providers/       # контракт борда: hh.ts (active), linkedin.ts (planned)
+  playwright/      # HH UI: login, search, vacancy, apply
+  services/        # scrape / rank / apply / retention
+  integrations/    # HH API, DeepSeek
+  api/             # Fastify: health + запасной hh:sync
 prisma/
-  schema.prisma
-  migrations/
 scripts/
-  hh-sync-once.ts
 ```
 
 ## Roadmap
@@ -195,3 +203,5 @@ scripts/
 - [x] Stage 3 — DeepSeek ranking → `analyses`
 - [x] Stage 5 — Playwright auto-apply → `applications`
 - [x] Stage 6 — GitHub Actions cron (`hh:pipeline`)
+- [x] `vacancies.provider` + `external_id` вместо голого `hh_id`
+- [ ] LinkedIn Jobs — схема БД готова, рантайма нет

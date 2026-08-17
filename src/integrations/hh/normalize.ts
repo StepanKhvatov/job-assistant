@@ -48,7 +48,8 @@ export function snippetFallback(item: HhVacancyListItem): string | null {
 
 export function mapListItemToDbFields(item: HhVacancyListItem, description: string | null) {
   return {
-    hhId: item.id,
+    provider: "hh" as const,
+    externalId: item.id,
     title: item.name,
     company: item.employer?.name ?? null,
     salary: formatHhSalary(item.salary),

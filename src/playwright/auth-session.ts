@@ -1,5 +1,6 @@
 import type { Page } from "playwright";
 
+import { HH_BOARD, hhSessionProbeUrl } from "../providers/hh.js";
 import { HH_AUTH_PROVIDER } from "./auth.js";
 
 export type HhSessionDeadReason = "login_redirect" | "captcha";
@@ -8,15 +9,11 @@ export type HhSessionCheckResult =
   | { alive: true; url: string }
   | { alive: false; reason: HhSessionDeadReason; url: string };
 
-function applicantProbeUrl(baseUrl: string): string {
-  return `${baseUrl.replace(/\/$/, "")}/applicant/vacancies`;
-}
-
 export async function verifyHhSessionOnPage(
   page: Page,
   baseUrl: string,
 ): Promise<HhSessionCheckResult> {
-  const probeUrl = applicantProbeUrl(baseUrl);
+  const probeUrl = hhSessionProbeUrl(baseUrl);
   await page.goto(probeUrl, { waitUntil: "domcontentloaded", timeout: 45_000 });
   await page.waitForLoadState("networkidle").catch(() => {});
 
@@ -26,7 +23,7 @@ export async function verifyHhSessionOnPage(
     return { alive: false, reason: "captcha", url };
   }
 
-  if (url.includes("/account/login")) {
+  if (HH_BOARD.sessionDeadUrlFragments.some((fragment) => url.includes(fragment))) {
     return { alive: false, reason: "login_redirect", url };
   }
 
@@ -43,7 +40,7 @@ export function formatHhSessionExpiredError(result: Extract<HhSessionCheckResult
     `[${HH_AUTH_PROVIDER}] session not alive: ${reason}`,
     `last_url=${result.url}`,
     "Local: HH_SCRAPE_HEADLESS=false npm run playwright:auth",
-    "CI: refresh GitHub secret HH_AUTH_STATE_B64 (npm run hh:auth:export)",
+    "CI: refresh GitHub secret HH_AUTH_STATE_B64 — see docs/AUTH.md",
   ].join("\n");
 }
 

@@ -9,8 +9,9 @@
 | `analyses` | `vacancy_id` | `vacancies` | `id` | CASCADE |
 | `applications` | `vacancy_id` | `vacancies` | `id` | CASCADE |
 
-Важно: связь идёт с **`vacancies.id`** (внутренний `cuid`), **не** с `hh_id`.  
-В Supabase Table Editor при настройке relation укажите именно `vacancies.id` ← `analyses.vacancy_id`.
+Важно: связь идёт с **`vacancies.id`** (внутренний `cuid`), **не** с `external_id`.  
+Id на hh.ru / LinkedIn — это `provider` + `external_id` (unique вместе).  
+В Supabase Table Editor: `vacancies.id` ← `analyses.vacancy_id`.
 
 Если в Studio написано «Has a foreign key relation to public.vacancies.id», но граф не рисуется — часто это UI-кэш:
 
@@ -30,8 +31,9 @@ npm run db:verify
 
 | Prisma | Колонка PG | Тип | Обязательно |
 | ------ | ---------- | --- | ----------- |
-| `id` | `id` | TEXT (PK) | да |
-| `hhId` | `hh_id` | TEXT (unique) | да |
+| `id` | `id` | TEXT (PK, cuid) | да |
+| `provider` | `provider` | ENUM `hh` \| `linkedin` | да |
+| `externalId` | `external_id` | TEXT | да |
 | `title` | `title` | TEXT | да |
 | `company` | `company` | TEXT | нет |
 | `salary` | `salary` | TEXT | нет |
@@ -39,6 +41,9 @@ npm run db:verify
 | `description` | `description` | TEXT | нет |
 | `publishedAt` | `published_at` | TIMESTAMPTZ | нет |
 | `createdAt` | `created_at` | TIMESTAMPTZ | да (default now) |
+
+Unique: `(provider, external_id)`. Один и тот же номер вакансии на HH и LinkedIn — две строки.  
+Существующие `hh_id` перенесены миграцией `20260817120000_vacancy_provider_external_id` (`provider = hh`).
 
 ### `analyses`
 

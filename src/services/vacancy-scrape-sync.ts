@@ -1,10 +1,21 @@
+/**
+ * Playwright-сбор вакансий hh.ru → таблица `vacancies`.
+ *
+ * Шаги: проверить cookies → обойти поиск → карточки новых и без description → upsert.
+ * Вакансии с уже заполненным описанием пропускаются.
+ * Retention после шага — только если RETENTION_INLINE=true (в CI выключено).
+ */
 import { chromium } from "playwright";
 
 import { assertHhSessionOnPage } from "../playwright/auth-session.js";
 import { assertValidHhAuth, HH_AUTH_PROVIDER } from "../playwright/auth.js";
 import { buildSearchUrl, resolveScrapeEnv, type ScrapeEnv } from "../playwright/config.js";
 import { collectVacancyIdsFromSearch } from "../playwright/search.js";
-import type { RetentionCleanupResult } from "./vacancy-retention.js";
+import { scrapeVacancyDetailById } from "../playwright/vacancy-page.js";
+import { sleep } from "../utils/sleep.js";
+import { logInfo, logScrapeFail } from "../utils/log.js";
+import { findExistingVacancyScrapeState, upsertScrapedVacancy } from "./upsert-vacancy.js";
+import { cleanupStaleVacanciesIfInline, type RetentionCleanupResult } from "./vacancy-retention.js";
 
 export type ScrapeSyncResult = {
   keyword: string;
@@ -18,14 +29,6 @@ export type ScrapeSyncResult = {
   retention: RetentionCleanupResult;
   errors: string[];
 };
-import { scrapeVacancyDetailById } from "../playwright/vacancy-page.js";
-import { logInfo, logScrapeFail } from "../utils/log.js";
-import { findExistingVacancyHhIds, upsertScrapedVacancy } from "./upsert-vacancy.js";
-import { cleanupStaleVacancies } from "./vacancy-retention.js";
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 export async function syncVacanciesFromScrape(
   options?: Partial<ScrapeEnv>,
@@ -61,35 +64,34 @@ export async function syncVacanciesFromScrape(
       `search done ids=${vacancyIds.length} pages=${search.pagesVisited}/${search.totalPages} total_reported=${search.totalReported ?? "?"}`,
     );
 
-    const toProcess = vacancyIds;
-
-    const existingHhIds = await findExistingVacancyHhIds(toProcess);
+    const existing = await findExistingVacancyScrapeState("hh", vacancyIds);
     let skippedExisting = 0;
     let upserted = 0;
-    const total = toProcess.length;
+    const total = vacancyIds.length;
 
     for (let i = 0; i < total; i++) {
-      const hhId = toProcess[i];
+      const externalId = vacancyIds[i];
 
-      if (existingHhIds.has(hhId)) {
+      if (existing.skip.has(externalId)) {
         skippedExisting++;
-        logInfo(`vacancy ${i + 1}/${total} hh_id=${hhId} skip (already in db)`);
+        logInfo(`vacancy ${i + 1}/${total} provider=hh id=${externalId} skip (already in db)`);
         continue;
       }
 
-      logInfo(`vacancy ${i + 1}/${total} hh_id=${hhId}`);
+      const reason = existing.refresh.has(externalId) ? "refresh (no description)" : "new";
+      logInfo(`vacancy ${i + 1}/${total} provider=hh id=${externalId} ${reason}`);
 
       try {
-        const detail = await scrapeVacancyDetailById(page, baseUrl, hhId);
+        const detail = await scrapeVacancyDetailById(page, baseUrl, externalId);
         if (await upsertScrapedVacancy(detail)) {
           upserted++;
         } else {
-          errors.push(`hh_id=${hhId}: db upsert failed`);
+          errors.push(`provider=hh id=${externalId}: db upsert failed`);
         }
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        logScrapeFail(hhId, msg);
-        errors.push(`hh_id=${hhId}: ${msg}`);
+        logScrapeFail("hh", externalId, msg);
+        errors.push(`provider=hh id=${externalId}: ${msg}`);
       }
 
       await sleep(env.detailDelayMs);
@@ -101,7 +103,7 @@ export async function syncVacanciesFromScrape(
       `finished upserted=${upserted} skipped_existing=${skippedExisting} failed=${errors.length} ids_found=${vacancyIds.length}`,
     );
 
-    const retention = await cleanupStaleVacancies();
+    const retention = await cleanupStaleVacanciesIfInline();
 
     return {
       keyword,

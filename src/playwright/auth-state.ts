@@ -1,5 +1,7 @@
 import { gunzipSync, gzipSync } from "node:zlib";
 
+import { HH_BOARD } from "../providers/hh.js";
+
 /** Playwright storageState shape (subset used for HH session export). */
 export type HhStorageState = {
   cookies: Array<{
@@ -15,12 +17,61 @@ export type HhStorageState = {
   origins?: unknown[];
 };
 
-const HH_COOKIE_DOMAIN = /hh\.ru/i;
+export type CookieExpirySummary = {
+  total: number;
+  sessionCookies: number;
+  expired: number;
+  expiringWithinDays: number;
+  earliestExpiry: Date | null;
+};
+
+const HH_COOKIE_DOMAIN = HH_BOARD.auth.primary.cookieDomainPattern;
+
+function isSessionCookie(expires: number): boolean {
+  return !Number.isFinite(expires) || expires <= 0;
+}
 
 /** Cookies only from a full storageState; origins/localStorage are huge and not needed for HH auth. */
 export function slimHhAuthState(state: HhStorageState): HhStorageState {
   const cookies = state.cookies.filter((c) => HH_COOKIE_DOMAIN.test(c.domain));
   return { cookies };
+}
+
+export function summarizeCookieExpiry(
+  state: HhStorageState,
+  withinDays = 7,
+): CookieExpirySummary {
+  const nowSec = Date.now() / 1000;
+  const horizon = nowSec + withinDays * 86_400;
+  let sessionCookies = 0;
+  let expired = 0;
+  let expiringWithinDays = 0;
+  let earliest: number | null = null;
+
+  for (const cookie of state.cookies) {
+    if (isSessionCookie(cookie.expires)) {
+      sessionCookies++;
+      continue;
+    }
+
+    if (earliest === null || cookie.expires < earliest) {
+      earliest = cookie.expires;
+    }
+
+    if (cookie.expires <= nowSec) {
+      expired++;
+    } else if (cookie.expires <= horizon) {
+      expiringWithinDays++;
+    }
+  }
+
+  return {
+    total: state.cookies.length,
+    sessionCookies,
+    expired,
+    expiringWithinDays,
+    earliestExpiry: earliest === null ? null : new Date(earliest * 1000),
+  };
 }
 
 export function encodeHhAuthStateForSecret(state: HhStorageState): string {

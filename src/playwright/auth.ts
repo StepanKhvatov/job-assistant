@@ -1,8 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
-/** Идентификатор провайдера авторизации (только hh.ru) */
-export const HH_AUTH_PROVIDER = "hh.ru" as const;
+import { HH_BOARD, hhLoginUrl } from "../providers/hh.js";
+
+/** Совпадает с `provider` в `.auth/hh-session.meta.json`. Не переименовывать. */
+export const HH_AUTH_PROVIDER = HH_BOARD.sessionMetaProvider;
 
 export type HhAuthProvider = typeof HH_AUTH_PROVIDER;
 
@@ -15,11 +17,11 @@ export type HhAuthSessionMeta = {
   accountRole: "applicant";
 };
 
-export const DEFAULT_AUTH_STATE_PATH = ".auth/hh-user.json";
-export const DEFAULT_AUTH_META_PATH = ".auth/hh-session.meta.json";
+export const DEFAULT_AUTH_STATE_PATH = HH_BOARD.auth.primary.stateFile;
+export const DEFAULT_AUTH_META_PATH = HH_BOARD.auth.primary.metaFile;
 
 export function getHhLoginUrl(baseUrl: string): string {
-  return `${baseUrl.replace(/\/$/, "")}/account/login`;
+  return hhLoginUrl(baseUrl);
 }
 
 export function resolveAuthPaths() {

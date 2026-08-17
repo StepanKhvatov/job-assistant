@@ -2,6 +2,8 @@
 
 Без Telegram. По умолчанию шаг `apply` использует `content/cover-letter.md` как fallback и пытается сгенерировать короткое письмо под вакансию через DeepSeek.
 
+Сессия должна быть живой: [AUTH.md](./AUTH.md). LinkedIn apply — только в схеме, рантайма нет: [PROVIDERS.md](./PROVIDERS.md).
+
 ## Два способа запуска отклика
 
 | Способ | Где в IDE | БД `applications` |
@@ -51,7 +53,7 @@ APPLY_DRY_RUN=true   # false — реальная отправка отклик�
 
 - Есть `analysis` с `score >= APPLY_MIN_SCORE`
 - Нет записи с блокирующим статусом: `applied`, `already_applied`, `skipped_foreign_country`, `skipped_questionnaire`
-- Повтор возможен после `dry_run`, `failed`, `no_response_button` (например `APPLY_DRY_RUN=false`)
+- Повтор возможен после `dry_run`, `failed`, `unconfirmed`, `no_response_button` (например `APPLY_DRY_RUN=false`)
 - Сортировка: сначала выше score
 
 ## Сопроводительное
@@ -74,6 +76,7 @@ APPLY_DRY_RUN=true   # false — реальная отправка отклик�
 | `skipped_foreign_country` | Popup «вакансия в другой стране» — пропуск |
 | `skipped_questionnaire` | Анкета/вопросы работодателя (`startedWithQuestion=true`) — автоматический отклик невозможен |
 | `failed` | Ошибка UI / скрипта |
+| `unconfirmed` | Submit нажат, текст успеха не появился — не считаем отклик состоявшимся, повтор возможен |
 
 Фильтр по тестовым заданиям **не реализован** — добавим при необходимости.
 

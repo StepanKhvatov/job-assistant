@@ -1,5 +1,12 @@
+import type { JobBoardId } from "../providers/types.js";
+
+/**
+ * Нормализованная карточка после scrape. `id` в БД — внутренний cuid;
+ * здесь только id на борде (`externalId`) и `provider`.
+ */
 export type ScrapedVacancyDetail = {
-  hhId: string;
+  provider: JobBoardId;
+  externalId: string;
   title: string;
   company: string | null;
   salary: string | null;

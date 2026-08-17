@@ -1,22 +1,17 @@
-import type { Vacancy } from "../generated/prisma/client.js";
-import type { VacancyRankModelResult } from "../integrations/deepseek/types.js";
-import { resolveRankEnv, type RankEnv } from "../config/rank-env.js";
-import { rankVacancyWithDeepSeek } from "../integrations/deepseek/client.js";
-import { buildRankVacancyMessages } from "../prompts/rank-vacancy.js";
+/**
+ * DeepSeek-ранжирование. Не знает про HH/LinkedIn: на входе строка описания.
+ */
+import type { RankEnv } from "../config/rank-env.js";
+import { resolveRankEnv } from "../config/rank-env.js";
 import { prisma } from "../db/client.js";
-import { logInfo } from "../utils/log.js";
-import { cleanupStaleVacancies, type RetentionCleanupResult } from "./vacancy-retention.js";
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function truncate(text: string, max: number): string {
-  if (text.length <= max) {
-    return text;
-  }
-  return `${text.slice(0, max)}…`;
-}
+import type { Vacancy } from "../generated/prisma/client.js";
+import { rankVacancyWithDeepSeek } from "../integrations/deepseek/client.js";
+import type { VacancyRankModelResult } from "../integrations/deepseek/types.js";
+import { buildRankVacancyMessages } from "../prompts/rank-vacancy.js";
+import { logInfo, vacancyRef } from "../utils/log.js";
+import { sleep } from "../utils/sleep.js";
+import { truncate } from "../utils/text.js";
+import { cleanupStaleVacanciesIfInline, type RetentionCleanupResult } from "./vacancy-retention.js";
 
 export type RankSyncResult = {
   candidates: number;
@@ -33,7 +28,8 @@ function vacancyToRankInput(v: Vacancy, maxChars: number) {
   }
 
   return {
-    hhId: v.hhId,
+    provider: v.provider,
+    externalId: v.externalId,
     title: v.title,
     company: v.company,
     salary: v.salary,
@@ -52,7 +48,7 @@ async function saveAnalysis(vacancy: Vacancy, result: VacancyRankModelResult) {
       cons: result.cons,
     },
   });
-  logInfo(`ai ok hh_id=${vacancy.hhId} score=${result.score}`);
+  logInfo(`ai ok ${vacancyRef(vacancy.provider, vacancy.externalId)} score=${result.score}`);
 }
 
 export async function rankUnanalyzedVacancies(
@@ -77,11 +73,11 @@ export async function rankUnanalyzedVacancies(
 
     if (!input) {
       skippedNoDescription++;
-      logInfo(`ai skip hh_id=${vacancy.hhId} (no description)`);
+      logInfo(`ai skip ${vacancyRef(vacancy.provider, vacancy.externalId)} (no description)`);
       continue;
     }
 
-    logInfo(`ai rank ${i + 1}/${vacancies.length} hh_id=${vacancy.hhId}`);
+    logInfo(`ai rank ${i + 1}/${vacancies.length} ${vacancyRef(vacancy.provider, vacancy.externalId)}`);
 
     try {
       const result = await rankVacancyWithDeepSeek(
@@ -92,8 +88,8 @@ export async function rankUnanalyzedVacancies(
       ranked++;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      console.error(`[job-assistant] ai fail hh_id=${vacancy.hhId} error=${msg}`);
-      errors.push(`hh_id=${vacancy.hhId}: ${msg}`);
+      console.error(`[job-assistant] ai fail ${vacancyRef(vacancy.provider, vacancy.externalId)} error=${msg}`);
+      errors.push(`${vacancyRef(vacancy.provider, vacancy.externalId)}: ${msg}`);
     }
 
     if (env.delayMs > 0) {
@@ -105,7 +101,7 @@ export async function rankUnanalyzedVacancies(
     `ai finished ranked=${ranked} errors=${errors.length} skipped_no_description=${skippedNoDescription}`,
   );
 
-  const retention = await cleanupStaleVacancies();
+  const retention = await cleanupStaleVacanciesIfInline();
 
   return {
     candidates: vacancies.length,
