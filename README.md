@@ -122,7 +122,7 @@ npm run ai:rank
 
 Ежедневный workflow: `.github/workflows/hh-pipeline.yml`
 
-- расписание: **~10:17 МСК** (`17 7 * * *` UTC)
+- расписание **3 раза в день по МСК**: 08:17 / 13:17 / 18:17 (`17 5`, `17 10`, `17 15` UTC)
 - ручной запуск: **Actions → HH Pipeline → Run workflow**
 - шаги: проверка сессии → scrape → rank → apply → cleanup
 - логин в CI **не выполняется** — только cookies из secret; как их обновить: [docs/AUTH.md](docs/AUTH.md)

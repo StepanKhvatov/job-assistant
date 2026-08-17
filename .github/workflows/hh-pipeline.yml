@@ -2,8 +2,10 @@ name: HH Pipeline
 
 on:
   schedule:
-    # 10:17 MSK (UTC+3). Avoid minute :00 — GitHub often delays/drops scheduled runs at the top of the hour.
-    - cron: "17 7 * * *"
+    # Three times a day, MSK (UTC+3). Avoid minute :00 — GitHub often delays/drops scheduled runs at the top of the hour.
+    - cron: "17 5 * * *" # 08:17 MSK
+    - cron: "17 10 * * *" # 13:17 MSK
+    - cron: "17 15 * * *" # 18:17 MSK
   workflow_dispatch:
 
 concurrency:
