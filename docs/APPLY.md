@@ -44,7 +44,7 @@ npm run hh:scrape && npm run ai:rank && npm run hh:apply
 Дефолты в коде / схеме борда. Переопределять только если нужно:
 
 ```env
-APPLY_MIN_SCORE=75
+APPLY_MIN_SCORE=60
 APPLY_MAX_PER_RUN=30
 APPLY_DELAY_MS=3000
 ```

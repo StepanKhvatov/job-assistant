@@ -103,7 +103,7 @@ function parseRawEnv(raw: NodeJS.ProcessEnv = process.env): AppEnv {
     RANK_DELAY_MS: intInRange(raw.RANK_DELAY_MS, 500, 0, 10_000),
     RANK_DESCRIPTION_MAX_CHARS: intInRange(raw.RANK_DESCRIPTION_MAX_CHARS, 12_000, 500, 30_000),
 
-    APPLY_MIN_SCORE: intInRange(raw.APPLY_MIN_SCORE, 75, 0, 100),
+    APPLY_MIN_SCORE: intInRange(raw.APPLY_MIN_SCORE, 60, 0, 100),
     APPLY_MAX_PER_RUN: intInRange(raw.APPLY_MAX_PER_RUN, 30, 1, 50),
     APPLY_DELAY_MS: optionalIntInRange(raw.APPLY_DELAY_MS, 1000, 60_000),
 

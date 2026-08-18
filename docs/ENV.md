@@ -59,7 +59,7 @@ DEEPSEEK_API_KEY=
 | `HH_BASE_URL` | `https://novosibirsk.hh.ru` |
 | `SCRAPE_DELAY_MS` | из схемы борда (HH: 800) |
 | `RANK_LIMIT` | `100` |
-| `APPLY_MIN_SCORE` | `75` |
+| `APPLY_MIN_SCORE` | `60` |
 | `APPLY_MAX_PER_RUN` | `30` |
 | `APPLY_DELAY_MS` | из схемы борда (HH: 3000) |
 | `RETENTION_DAYS` | `45` |
