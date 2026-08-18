@@ -1,13 +1,14 @@
 import "dotenv/config";
 
 import { prisma } from "../src/db/client.js";
+import { APPLICATION_NO_RETRY_STATUSES } from "../src/playwright/apply.js";
 
 const rows = await prisma.vacancy.findMany({
   where: {
     provider: "hh",
     applications: {
       none: {
-        status: { in: ["applied", "already_applied", "skipped_foreign_country"] },
+        status: { in: [...APPLICATION_NO_RETRY_STATUSES] },
       },
     },
     analyses: { some: { score: { gte: 75 } } },

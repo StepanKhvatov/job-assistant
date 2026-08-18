@@ -31,6 +31,7 @@ export type ApplySyncResult = {
   skippedNoButton: number;
   skippedForeignCountry: number;
   skippedQuestionnaire: number;
+  skippedArchived: number;
   unconfirmed: number;
   failed: number;
   retention: RetentionCleanupResult;
@@ -146,6 +147,7 @@ export async function applyToRankedVacancies(
   let skippedNoButton = 0;
   let skippedForeignCountry = 0;
   let skippedQuestionnaire = 0;
+  let skippedArchived = 0;
   let unconfirmed = 0;
   let failed = 0;
 
@@ -207,6 +209,10 @@ export async function applyToRankedVacancies(
             skippedQuestionnaire++;
             logInfo(`apply skip ${ref} (questionnaire)`);
             break;
+          case APPLICATION_STATUS.skippedArchived:
+            skippedArchived++;
+            logInfo(`apply skip ${ref} (archived)`);
+            break;
           case APPLICATION_STATUS.unconfirmed:
             unconfirmed++;
             logInfo(`apply unconfirmed ${ref}`);
@@ -246,7 +252,7 @@ export async function applyToRankedVacancies(
   const retention = await cleanupStaleVacanciesIfInline();
 
   logInfo(
-    `apply finished applied=${applied} failed=${failed} unconfirmed=${unconfirmed} already=${skippedAlready} no_button=${skippedNoButton} foreign_country=${skippedForeignCountry} questionnaire=${skippedQuestionnaire}`,
+    `apply finished applied=${applied} failed=${failed} unconfirmed=${unconfirmed} already=${skippedAlready} no_button=${skippedNoButton} foreign_country=${skippedForeignCountry} questionnaire=${skippedQuestionnaire} archived=${skippedArchived}`,
   );
 
   return {
@@ -258,6 +264,7 @@ export async function applyToRankedVacancies(
     skippedNoButton,
     skippedForeignCountry,
     skippedQuestionnaire,
+    skippedArchived,
     unconfirmed,
     failed,
     retention,

@@ -52,9 +52,10 @@ APPLY_DELAY_MS=3000
 ## Кого откликаем
 
 - Есть `analysis` с `score >= APPLY_MIN_SCORE`
-- Нет записи с блокирующим статусом: `applied`, `already_applied`, `skipped_foreign_country`, `skipped_questionnaire`
+- Нет записи с блокирующим статусом: `applied`, `already_applied`, `skipped_foreign_country`, `skipped_questionnaire`, `skipped_archived`
 - Повтор возможен после `dry_run` (legacy), `failed`, `unconfirmed`, `no_response_button`
 - Сортировка: сначала выше score
+- Очередь берётся из БД, не из живого поиска hh.ru. Вакансия могла быть живой на scrape и уйти в архив к моменту apply.
 
 ## Сопроводительное
 
@@ -75,6 +76,7 @@ APPLY_DELAY_MS=3000
 | `no_response_button` | Нет кнопки отклика |
 | `skipped_foreign_country` | Popup «вакансия в другой стране» — пропуск |
 | `skipped_questionnaire` | Анкета/вопросы работодателя — автоматический отклик невозможен |
+| `skipped_archived` | На карточке заголовок «Вакансия в архиве» — пропуск, повтор не делаем |
 | `failed` | Ошибка UI / скрипта |
 | `unconfirmed` | Submit нажат, текст успеха не появился — не считаем отклик состоявшимся, повтор возможен |
 

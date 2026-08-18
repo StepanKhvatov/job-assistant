@@ -3,12 +3,13 @@
  *
  * Порядок:
  * 1. Открыть `/vacancy/{id}`
- * 2. Если уже откликались — `already_applied`
- * 3. Нажать «Откликнуться»
- * 4. Понять экран: форма / мгновенный успех / анкета / «другая страна»
- * 5. Выбрать резюме по `CANDIDATE_PROFILE.targetRole`
- * 6. Вставить сопроводительное
- * 7. Submit и проверка текста успеха
+ * 2. Если вакансия в архиве — `skipped_archived`
+ * 3. Если уже откликались — `already_applied`
+ * 4. Нажать «Откликнуться»
+ * 5. Понять экран: форма / мгновенный успех / анкета / «другая страна»
+ * 6. Выбрать резюме по `CANDIDATE_PROFILE.targetRole`
+ * 7. Вставить сопроводительное
+ * 8. Submit и проверка текста успеха
  *
  * LinkedIn сюда не добавлять: другая поверхность (Easy Apply vs ATS).
  * Контракт: `src/playwright/adapter.ts`. Схема борда: `src/providers/hh.ts`.
@@ -35,6 +36,7 @@ export const APPLICATION_STATUS = {
   noButton: "no_response_button",
   skippedForeignCountry: "skipped_foreign_country",
   skippedQuestionnaire: "skipped_questionnaire",
+  skippedArchived: "skipped_archived",
   failed: "failed",
   unconfirmed: "unconfirmed",
 } as const;
@@ -50,6 +52,7 @@ export const APPLICATION_NO_RETRY_STATUSES = [
   ...APPLICATION_FINAL_STATUSES,
   APPLICATION_STATUS.skippedForeignCountry,
   APPLICATION_STATUS.skippedQuestionnaire,
+  APPLICATION_STATUS.skippedArchived,
 ] as const;
 
 export type ApplicationStatus = (typeof APPLICATION_STATUS)[keyof typeof APPLICATION_STATUS];
@@ -67,6 +70,10 @@ const RESPOND_SELECTORS = [
   'button:has([data-qa="vacancy-response-link-top"])',
   'button:has([data-qa="vacancy-response-link"])',
 ];
+
+/** Заголовок на закрытой вакансии: «Вакансия в архиве». */
+const ARCHIVED_HEADING = 'h2[data-qa="bloko-header-2"]';
+const ARCHIVED_HEADING_TEXT = /вакансия в архиве/i;
 
 const RESPONSE_FORM = 'form[name="vacancy_response"], #RESPONSE_MODAL_FORM_ID';
 const RESUME_TRIGGER = '[data-qa="resume-title"], [data-qa="resume-detail"]';
@@ -137,6 +144,12 @@ async function dismissBlockingOverlays(page: Page, externalId: string): Promise<
   }
 }
 
+/** На архивной карточке «Откликнуться» часто есть у похожих вакансий — это не наша кнопка. */
+async function isVacancyArchived(page: Page): Promise<boolean> {
+  const heading = page.locator(ARCHIVED_HEADING).filter({ hasText: ARCHIVED_HEADING_TEXT });
+  return (await heading.count()) > 0;
+}
+
 async function clickRespondButton(page: Page, externalId: string): Promise<void> {
   for (const selector of RESPOND_SELECTORS) {
     const target = page.locator(selector).first();
@@ -196,7 +209,8 @@ type ApplySurfaceState =
   | { kind: "instant_applied" }
   | { kind: "test_page" }
   | { kind: "foreign_country" }
-  | { kind: "login_required" };
+  | { kind: "login_required" }
+  | { kind: "archived" };
 
 async function isLoginSurfaceVisible(page: Page): Promise<boolean> {
   if ((await hhGuestLoginLink(page).count()) > 0) {
@@ -260,6 +274,11 @@ async function waitForApplySurface(page: Page, initialUrl: string, externalId: s
 
   while (Date.now() < deadline) {
     polls++;
+
+    if (await isVacancyArchived(page)) {
+      logApply(externalId, "surface", "kind=archived");
+      return { kind: "archived" };
+    }
 
     if (await isLoginSurfaceVisible(page)) {
       logApply(externalId, "surface", "kind=login_required");
@@ -699,11 +718,17 @@ export async function applyToVacancy(
   await page.waitForLoadState("networkidle").catch(() => {});
   const pageUi = await readHhSessionUi(page);
   const respondCount = await countRespondButtons(page);
+  const archived = await isVacancyArchived(page);
   logApply(
     externalId,
     "page_loaded",
-    `url=${page.url()} ${formatHhSessionUi(pageUi)} respond_button=${respondCount > 0 ? "yes" : "no"} note=respond_button_is_not_login_proof`,
+    `url=${page.url()} ${formatHhSessionUi(pageUi)} respond_button=${respondCount > 0 ? "yes" : "no"} archived=${archived ? "yes" : "no"} note=respond_button_is_not_login_proof`,
   );
+
+  if (archived) {
+    logApply(externalId, "done", "status=skipped_archived");
+    return { status: APPLICATION_STATUS.skippedArchived };
+  }
 
   await dismissBlockingOverlays(page, externalId);
 
@@ -739,6 +764,10 @@ export async function applyToVacancy(
         sessionDead: true,
       };
     }
+    if (await isVacancyArchived(page).catch(() => false)) {
+      logApply(externalId, "done", "status=skipped_archived after=error");
+      return { status: APPLICATION_STATUS.skippedArchived };
+    }
     if (await isForeignCountryPopupVisible(page).catch(() => false)) {
       await dismissForeignCountryPopup(page, externalId);
       logApply(externalId, "done", "status=skipped_foreign_country after=error");
@@ -764,6 +793,11 @@ export async function applyToVacancy(
       error: "Login form instead of apply form — session is guest",
       sessionDead: true,
     };
+  }
+
+  if (surface.kind === "archived") {
+    logApply(externalId, "done", "status=skipped_archived");
+    return { status: APPLICATION_STATUS.skippedArchived };
   }
 
   if (surface.kind === "foreign_country") {
