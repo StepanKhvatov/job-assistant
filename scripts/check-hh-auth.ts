@@ -16,7 +16,7 @@ import {
   verifyHhSessionOnPage,
 } from "../src/playwright/auth-session.js";
 import {
-  parseHhAuthStateJson,
+  parseAuthStateJson,
   summarizeCookieExpiry,
 } from "../src/playwright/auth-state.js";
 import { HH_GUEST_LOGIN_LINK_SELECTOR } from "../src/providers/hh.js";
@@ -35,7 +35,7 @@ assertValidHhAuth(statePath, metaPath, baseUrl);
 logInfo("auth check op=validate_files ok");
 
 const meta = readHhAuthMeta(metaPath);
-const storage = parseHhAuthStateJson(readFileSync(statePath, "utf8"));
+const storage = parseAuthStateJson(readFileSync(statePath, "utf8"));
 const expiry = summarizeCookieExpiry(storage, 7);
 const origins = Array.isArray(storage.origins) ? storage.origins.length : 0;
 

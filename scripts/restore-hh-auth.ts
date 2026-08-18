@@ -11,8 +11,8 @@ import {
   writeHhAuthMeta,
 } from "../src/playwright/auth.js";
 import {
-  decodeHhAuthStateFromSecret,
-  parseHhAuthStateJson,
+  decodeAuthStateFromSecret,
+  parseAuthStateJson,
 } from "../src/playwright/auth-state.js";
 import { logInfo } from "../src/utils/log.js";
 
@@ -36,8 +36,8 @@ mkdirSync(dirname(statePath), { recursive: true });
 let stateJson: string;
 let cookieCount: number;
 try {
-  stateJson = decodeHhAuthStateFromSecret(stateB64);
-  const parsed = parseHhAuthStateJson(stateJson);
+  stateJson = decodeAuthStateFromSecret(stateB64);
+  const parsed = parseAuthStateJson(stateJson);
   cookieCount = parsed.cookies.length;
   stateJson = `${JSON.stringify(parsed)}\n`;
 } catch (e) {

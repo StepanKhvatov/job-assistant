@@ -15,6 +15,17 @@ const intInRange = (raw: string | undefined, fallback: number, min: number, max:
   return Math.min(max, Math.max(min, value));
 };
 
+const optionalIntInRange = (raw: string | undefined, min: number, max: number) => {
+  if (raw === undefined || raw.trim() === "") {
+    return undefined;
+  }
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n)) {
+    return undefined;
+  }
+  return Math.min(max, Math.max(min, n));
+};
+
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   DIRECT_URL: z.string().optional(),
@@ -30,7 +41,7 @@ const envSchema = z.object({
   HH_BASE_URL: z.string().url(),
 
   HEADLESS: z.boolean(),
-  SCRAPE_DELAY_MS: z.number().int(),
+  SCRAPE_DELAY_MS: z.number().int().optional(),
 
   DEEPSEEK_API_KEY: z.string().optional(),
   DEEPSEEK_MODEL: z.string(),
@@ -40,8 +51,7 @@ const envSchema = z.object({
 
   APPLY_MIN_SCORE: z.number().int(),
   APPLY_MAX_PER_RUN: z.number().int(),
-  APPLY_DELAY_MS: z.number().int(),
-  APPLY_DRY_RUN: z.boolean(),
+  APPLY_DELAY_MS: z.number().int().optional(),
 
   RETENTION_DAYS: z.number().int(),
   RETENTION_INLINE: z.boolean(),
@@ -63,10 +73,7 @@ const envSchema = z.object({
 export type AppEnv = z.infer<typeof envSchema>;
 
 function resolveSearchKeyword(raw: NodeJS.ProcessEnv): string {
-  const explicit =
-    raw.HH_SEARCH_KEYWORD?.trim() ||
-    raw.HH_SCRAPE_KEYWORD?.trim() ||
-    raw.HH_SEARCH_TEXT?.trim();
+  const explicit = raw.HH_SEARCH_KEYWORD?.trim();
   if (explicit) {
     return normalizeSearchKeyword(explicit);
   }
@@ -85,37 +92,22 @@ function parseRawEnv(raw: NodeJS.ProcessEnv = process.env): AppEnv {
     HH_EMAIL: raw.HH_EMAIL?.trim() || undefined,
     HH_PASSWORD: raw.HH_PASSWORD?.trim() || undefined,
     HH_SEARCH_KEYWORD: resolveSearchKeyword(raw),
-    HH_BASE_URL: (raw.HH_BASE_URL ?? raw.HH_SCRAPE_BASE_URL ?? "https://novosibirsk.hh.ru").replace(
-      /\/$/,
-      "",
-    ),
+    HH_BASE_URL: (raw.HH_BASE_URL ?? "https://novosibirsk.hh.ru").replace(/\/$/, ""),
 
-    HEADLESS: falseUnless(raw.HEADLESS ?? raw.HH_SCRAPE_HEADLESS, true),
-
-    SCRAPE_DELAY_MS: intInRange(
-      raw.SCRAPE_DELAY_MS ?? raw.HH_SCRAPE_DETAIL_DELAY_MS,
-      800,
-      200,
-      5000,
-    ),
+    HEADLESS: falseUnless(raw.HEADLESS, true),
+    SCRAPE_DELAY_MS: optionalIntInRange(raw.SCRAPE_DELAY_MS, 200, 15_000),
 
     DEEPSEEK_API_KEY: raw.DEEPSEEK_API_KEY?.trim() || undefined,
     DEEPSEEK_MODEL: raw.DEEPSEEK_MODEL?.trim() || "deepseek-chat",
-    RANK_LIMIT: intInRange(raw.RANK_LIMIT ?? raw.AI_RANK_LIMIT, 100, 1, 500),
-    RANK_DELAY_MS: intInRange(raw.RANK_DELAY_MS ?? raw.AI_RANK_DELAY_MS, 500, 0, 10_000),
-    RANK_DESCRIPTION_MAX_CHARS: intInRange(raw.AI_RANK_DESCRIPTION_MAX_CHARS, 12_000, 500, 30_000),
+    RANK_LIMIT: intInRange(raw.RANK_LIMIT, 100, 1, 500),
+    RANK_DELAY_MS: intInRange(raw.RANK_DELAY_MS, 500, 0, 10_000),
+    RANK_DESCRIPTION_MAX_CHARS: intInRange(raw.RANK_DESCRIPTION_MAX_CHARS, 12_000, 500, 30_000),
 
     APPLY_MIN_SCORE: intInRange(raw.APPLY_MIN_SCORE, 75, 0, 100),
-    APPLY_MAX_PER_RUN: intInRange(raw.APPLY_MAX_VACANCIES ?? raw.APPLY_MAX_PER_RUN, 30, 1, 50),
-    APPLY_DELAY_MS: intInRange(raw.APPLY_DELAY_MS, 3000, 1000, 60_000),
-    APPLY_DRY_RUN: falseUnless(raw.APPLY_DRY_RUN, true),
+    APPLY_MAX_PER_RUN: intInRange(raw.APPLY_MAX_PER_RUN, 30, 1, 50),
+    APPLY_DELAY_MS: optionalIntInRange(raw.APPLY_DELAY_MS, 1000, 60_000),
 
-    RETENTION_DAYS: intInRange(
-      raw.RETENTION_DAYS ?? raw.VACANCY_RETENTION_DAYS,
-      raw.VACANCY_RETENTION_ENABLED === "false" ? 0 : 45,
-      0,
-      365,
-    ),
+    RETENTION_DAYS: intInRange(raw.RETENTION_DAYS, 45, 0, 365),
     RETENTION_INLINE: falseUnless(raw.RETENTION_INLINE, true),
 
     HH_VACANCY_ID: raw.HH_VACANCY_ID?.trim(),
@@ -124,9 +116,9 @@ function parseRawEnv(raw: NodeJS.ProcessEnv = process.env): AppEnv {
     HH_ACCESS_TOKEN: raw.HH_ACCESS_TOKEN?.trim() || undefined,
     HH_KEYWORDS: raw.HH_KEYWORDS?.trim() || undefined,
     HH_SEARCH_TEXT: raw.HH_SEARCH_TEXT?.trim() || undefined,
-    HH_API_BASE_URL: raw.HH_API_BASE_URL?.trim() || raw.HH_API_URL?.trim() || undefined,
+    HH_API_BASE_URL: raw.HH_API_BASE_URL?.trim() || undefined,
     HH_MAX_PAGES_PER_QUERY: intInRange(raw.HH_MAX_PAGES_PER_QUERY, 5, 1, 20),
-    HH_API_DETAIL_DELAY_MS: intInRange(raw.HH_DETAIL_DELAY_MS, 350, 0, 5000),
+    HH_API_DETAIL_DELAY_MS: intInRange(raw.HH_API_DETAIL_DELAY_MS, 350, 0, 5000),
     HH_INCLUDE_OFFICE: falseUnless(raw.HH_INCLUDE_OFFICE, true),
     HH_INCLUDE_REMOTE: falseUnless(raw.HH_INCLUDE_REMOTE, true),
     HH_MAX_VACANCIES_DETAIL: intInRange(raw.HH_MAX_VACANCIES_DETAIL, 200, 1, 500),
@@ -156,7 +148,7 @@ export function requireHhCredentials(env = getEnv()): { email: string; password:
   return { email: env.HH_EMAIL, password: env.HH_PASSWORD };
 }
 
-/** Fastify @fastify/env (упрощённая схема) */
+/** Fastify @fastify/env — только HTTP (health + запасной hh:sync). */
 export const fastifyEnvSchema = {
   type: "object",
   required: ["DATABASE_URL"],
@@ -167,9 +159,15 @@ export const fastifyEnvSchema = {
     DATABASE_URL: { type: "string" },
     DIRECT_URL: { type: "string" },
     CRON_SECRET: { type: "string" },
-    HH_SEARCH_KEYWORD: { type: "string", default: "" },
+    HH_SEARCH_TEXT: { type: "string", default: "" },
     HH_KEYWORDS: { type: "string", default: "" },
     HH_USER_AGENT: { type: "string", default: "" },
     HH_ACCESS_TOKEN: { type: "string", default: "" },
+    HH_API_BASE_URL: { type: "string", default: "" },
+    HH_MAX_PAGES_PER_QUERY: { type: "string", default: "" },
+    HH_API_DETAIL_DELAY_MS: { type: "string", default: "" },
+    HH_INCLUDE_OFFICE: { type: "string", default: "" },
+    HH_INCLUDE_REMOTE: { type: "string", default: "" },
+    HH_MAX_VACANCIES_DETAIL: { type: "string", default: "" },
   },
 } as const;

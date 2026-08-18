@@ -20,7 +20,7 @@ export async function cleanupStaleVacancies(
   const env = { ...resolveRetentionEnv(), ...options };
 
   if (!env.enabled) {
-    logInfo("retention skip (disabled or VACANCY_RETENTION_DAYS=0)");
+    logInfo("retention skip (disabled or RETENTION_DAYS=0)");
     return {
       enabled: false,
       retentionDays: env.retentionDays,

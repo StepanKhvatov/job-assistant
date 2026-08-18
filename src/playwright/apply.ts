@@ -8,10 +8,10 @@
  * 4. Понять экран: форма / мгновенный успех / анкета / «другая страна»
  * 5. Выбрать резюме по `CANDIDATE_PROFILE.targetRole`
  * 6. Вставить сопроводительное
- * 7. `dryRun` — Escape; иначе Submit и проверка текста успеха
+ * 7. Submit и проверка текста успеха
  *
  * LinkedIn сюда не добавлять: другая поверхность (Easy Apply vs ATS).
- * Схема борда: `src/providers/hh.ts`.
+ * Контракт: `src/playwright/adapter.ts`. Схема борда: `src/providers/hh.ts`.
  */
 import type { Locator, Page } from "playwright";
 
@@ -29,6 +29,7 @@ import { buildVacancyUrl } from "./config.js";
 /** Статусы записи в `applications`. */
 export const APPLICATION_STATUS = {
   applied: "applied",
+  /** Исторический статус; новые отклики его не пишут. Повтор возможен. */
   dryRun: "dry_run",
   alreadyApplied: "already_applied",
   noButton: "no_response_button",
@@ -690,10 +691,9 @@ export async function applyToVacancy(
   baseUrl: string,
   externalId: string,
   coverLetter: string,
-  dryRun: boolean,
 ): Promise<ApplyToVacancyResult> {
   const vacancyUrl = buildVacancyUrl(baseUrl, externalId);
-  logApply(externalId, "start", `url=${vacancyUrl} dry_run=${dryRun ? "yes" : "no"}`);
+  logApply(externalId, "start", `url=${vacancyUrl}`);
 
   await page.goto(vacancyUrl, { waitUntil: "domcontentloaded" });
   await page.waitForLoadState("networkidle").catch(() => {});
@@ -789,12 +789,6 @@ export async function applyToVacancy(
   }
 
   await fillReactTextarea(letter, coverLetter, externalId);
-
-  if (dryRun) {
-    logApply(externalId, "done", "status=dry_run");
-    await page.keyboard.press("Escape").catch(() => {});
-    return { status: APPLICATION_STATUS.dryRun };
-  }
 
   try {
     await clickSubmitButton(modal, page, externalId);

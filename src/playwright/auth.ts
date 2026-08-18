@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 import { HH_BOARD, hhLoginUrl } from "../providers/hh.js";
+import { getJobBoard, type JobBoardId } from "../providers/index.js";
 
 /** Совпадает с `provider` в `.auth/hh-session.meta.json`. Не переименовывать. */
 export const HH_AUTH_PROVIDER = HH_BOARD.sessionMetaProvider;
@@ -24,8 +25,13 @@ export function getHhLoginUrl(baseUrl: string): string {
   return hhLoginUrl(baseUrl);
 }
 
-export function resolveAuthPaths() {
-  return { statePath: DEFAULT_AUTH_STATE_PATH, metaPath: DEFAULT_AUTH_META_PATH };
+export function resolveAuthPaths(boardId: JobBoardId = "hh") {
+  const board = getJobBoard(boardId);
+  const primary = board.auth.primary;
+  if (primary.kind !== "playwright-session") {
+    throw new Error(`${board.id} primary auth is not a playwright session`);
+  }
+  return { statePath: primary.stateFile, metaPath: primary.metaFile };
 }
 
 export function writeHhAuthMeta(metaPath: string, meta: HhAuthSessionMeta): void {

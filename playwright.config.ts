@@ -4,6 +4,7 @@ import "dotenv/config";
 
 import { getEnv } from "./src/config/env.js";
 import { DEFAULT_AUTH_STATE_PATH } from "./src/playwright/auth.js";
+import { HH_BOARD } from "./src/providers/hh.js";
 
 const { HH_BASE_URL, HEADLESS } = getEnv();
 const hasAuthState = existsSync(DEFAULT_AUTH_STATE_PATH);
@@ -19,8 +20,8 @@ export default defineConfig({
     ...devices["Desktop Chrome"],
     baseURL: HH_BASE_URL,
     headless: HEADLESS,
-    locale: "ru-RU",
-    timezoneId: "Asia/Novosibirsk",
+    locale: HH_BOARD.browser.locale,
+    timezoneId: HH_BOARD.browser.timezoneId,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },

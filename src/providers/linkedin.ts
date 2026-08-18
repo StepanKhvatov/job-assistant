@@ -64,6 +64,10 @@ export const LINKEDIN_BOARD = {
   identity: {
     urlIdPattern: "/jobs/view/{id}",
   },
+  browser: {
+    locale: "en-US",
+    timezoneId: "Asia/Novosibirsk",
+  },
   pipeline: [
     {
       id: "auth",

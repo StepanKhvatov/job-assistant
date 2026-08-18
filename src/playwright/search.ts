@@ -3,19 +3,14 @@ import type { Page } from "playwright";
 import { HH_SEARCH_ITEMS_PER_PAGE } from "../providers/hh.js";
 import { logInfo } from "../utils/log.js";
 import { buildSearchUrl } from "./config.js";
+import type { SearchCollectionResult } from "./types.js";
 
 const SERP_ROOT = '[data-qa="vacancy-serp__results"], main';
 const VACANCY_CARD = '[data-qa="vacancy-serp__vacancy"]';
 const PAGER_BLOCK = '[data-qa="pager-block"]';
 
 export { HH_SEARCH_ITEMS_PER_PAGE };
-
-export type SearchCollectionResult = {
-  ids: string[];
-  totalReported: number | null;
-  totalPages: number;
-  pagesVisited: number;
-};
+export type { SearchCollectionResult };
 
 /** «Найдено 1 234 вакансии» из текста `<p>` или заголовка. */
 export function parseTotalVacanciesText(text: string): number | null {

@@ -8,7 +8,7 @@ LinkedIn в рантайме ещё нет; когда появится, схе�
 
 | Что | Где живёт | Как обновлять | Срок |
 | --- | --------- | ------------- | ---- |
-| Cookies hh.ru (основной путь) | `.auth/hh-user.json` + `.auth/hh-session.meta.json` | `HH_SCRAPE_HEADLESS=false npm run playwright:auth`, затем при необходимости `npm run hh:auth:export` | Дни–недели; CI сам не обновляет |
+| Cookies hh.ru (основной путь) | `.auth/hh-user.json` + `.auth/hh-session.meta.json` | `HEADLESS=false npm run playwright:auth`, затем при необходимости `npm run hh:auth:export` | Дни–недели; CI сам не обновляет |
 | `HH_AUTH_STATE_B64` | GitHub Secret | После локального логина: `npm run hh:auth:export` | Копия тех же cookies |
 | `HH_ACCESS_TOKEN` | `.env` / secret | Вручную на [dev.hh.ru/admin](https://dev.hh.ru/admin) | Токен приложения, refresh нет |
 | `DEEPSEEK_API_KEY` | `.env` / secret | Новый ключ на platform.deepseek.com | Пока не отозван |
@@ -17,10 +17,10 @@ LinkedIn в рантайме ещё нет; когда появится, схе�
 Логин в CI **не выполняется**. Чтобы сохранить сессию на своей машине, нужны `HH_EMAIL` / `HH_PASSWORD` в `.env` и команда:
 
 ```bash
-HH_SCRAPE_HEADLESS=false npm run playwright:auth
+HEADLESS=false npm run playwright:auth
 ```
 
-Без `HH_SCRAPE_HEADLESS=false` браузер headless: капча не решается, cookies не запишутся.
+Без `HEADLESS=false` браузер headless: капча не решается, cookies не запишутся.
 
 ## Когда обновлять сессию hh.ru
 
@@ -53,7 +53,7 @@ npm run hh:auth:check
 Плохо: `login_link` / `redirected to login` / `header still shows Войти` / `captcha required` — сохраните сессию заново:
 
 ```bash
-HH_SCRAPE_HEADLESS=false npm run playwright:auth
+HEADLESS=false npm run playwright:auth
 ```
 
 ## Локально: сохранить сессию
@@ -61,7 +61,7 @@ HH_SCRAPE_HEADLESS=false npm run playwright:auth
 Нужны `HH_EMAIL` и `HH_PASSWORD` в `.env`. Капча почти всегда — браузер должен быть видимым. Команда, которая логинится и **записывает** cookies:
 
 ```bash
-HH_SCRAPE_HEADLESS=false npm run playwright:auth
+HEADLESS=false npm run playwright:auth
 ```
 
 После успеха появятся (или перезапишутся):
@@ -79,7 +79,7 @@ npm run hh:auth:check
 
 ## GitHub Actions: обновить secret
 
-Сначала сохраните сессию локально (`HH_SCRAPE_HEADLESS=false npm run playwright:auth`). Экспорт **slim**: только cookies `*.hh.ru`, без localStorage. Полный `hh-user.json` (~650 KB) в secret GitHub (64 KB) не влезет.
+Сначала сохраните сессию локально (`HEADLESS=false npm run playwright:auth`). Экспорт **slim**: только cookies `*.hh.ru`, без localStorage. Полный `hh-user.json` (~650 KB) в secret GitHub (64 KB) не влезет.
 
 ```bash
 npm run hh:auth:export
@@ -98,7 +98,7 @@ npm run hh:auth:export
 
 ## Если капча или 2FA
 
-1. Только headed: `HH_SCRAPE_HEADLESS=false npm run playwright:auth`.
+1. Только headed: `HEADLESS=false npm run playwright:auth`.
 2. Пройдите капчу / код вручную, пока Playwright ждёт ухода с `/account/login` (таймаут 60 с). Если не успели — ту же команду ещё раз.
 3. Не логиньтесь из CI. IP GitHub для hh.ru — плохой сигнал.
 
@@ -125,8 +125,8 @@ npm run hh:auth:export
 
 | Симптом | Что сделать |
 | ------- | ----------- |
-| `HH auth state missing` | `HH_SCRAPE_HEADLESS=false npm run playwright:auth` |
-| `session was created for X, but scrape uses Y` | Выровнять `HH_BASE_URL` и снова `HH_SCRAPE_HEADLESS=false npm run playwright:auth` |
+| `HH auth state missing` | `HEADLESS=false npm run playwright:auth` |
+| `session was created for X, but scrape uses Y` | Выровнять `HH_BASE_URL` и снова `HEADLESS=false npm run playwright:auth` |
 | `HH_AUTH_STATE_B64 is invalid` | Заново `hh:auth:export`, в secret без переносов и кавычек |
 | Secret > 65536 chars | Убедиться, что export slim, не сырой `hh-user.json` |
 | Капча на каждом логине | Пауза, другой IP, не крутить headless-логин |

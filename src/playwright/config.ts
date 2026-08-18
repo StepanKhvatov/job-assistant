@@ -1,11 +1,13 @@
 import { getEnv } from "../config/env.js";
 import { HH_BOARD, hhSearchUrl, hhVacancyUrl } from "../providers/hh.js";
+import { requireActiveJobBoard, type JobBoardId } from "../providers/index.js";
 import { resolveAuthPaths } from "./auth.js";
 
 export const DEFAULT_SCRAPE_BASE_URL = HH_BOARD.defaultSiteUrl;
 export { DEFAULT_AUTH_STATE_PATH, DEFAULT_AUTH_META_PATH, HH_AUTH_PROVIDER } from "./auth.js";
 
 export type ScrapeEnv = {
+  boardId: JobBoardId;
   baseUrl: string;
   authStatePath: string;
   authMetaPath: string;
@@ -14,16 +16,23 @@ export type ScrapeEnv = {
   headless: boolean;
 };
 
-export function resolveScrapeEnv(overrides?: Partial<ScrapeEnv>): ScrapeEnv {
+export function resolveScrapeEnv(
+  boardId: JobBoardId = "hh",
+  overrides?: Partial<ScrapeEnv>,
+): ScrapeEnv {
+  const board = requireActiveJobBoard(boardId);
   const e = getEnv();
-  const { statePath, metaPath } = resolveAuthPaths();
+  const { statePath, metaPath } = resolveAuthPaths(boardId);
+
+  const baseUrl = boardId === "hh" ? e.HH_BASE_URL : board.defaultSiteUrl;
 
   return {
-    baseUrl: e.HH_BASE_URL,
+    boardId,
+    baseUrl,
     authStatePath: statePath,
     authMetaPath: metaPath,
     searchKeyword: e.HH_SEARCH_KEYWORD,
-    detailDelayMs: e.SCRAPE_DELAY_MS,
+    detailDelayMs: e.SCRAPE_DELAY_MS ?? board.limits.scrapeDelayMs,
     headless: e.HEADLESS,
     ...overrides,
   };

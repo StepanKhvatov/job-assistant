@@ -1,23 +1,21 @@
 /**
- * Playwright-сбор вакансий hh.ru → таблица `vacancies`.
+ * Playwright-сбор вакансий → таблица `vacancies`.
  *
- * Шаги: проверить cookies → обойти поиск → карточки новых и без description → upsert.
- * Вакансии с уже заполненным описанием пропускаются.
+ * Борд задаётся адаптером (`getPlaywrightAdapter`). HH — единственный active.
  * Retention после шага — только если RETENTION_INLINE=true (в CI выключено).
  */
 import { chromium } from "playwright";
 
-import { assertHhSessionOnPage, formatHhSessionUi } from "../playwright/auth-session.js";
-import { assertValidHhAuth, HH_AUTH_PROVIDER } from "../playwright/auth.js";
-import { buildSearchUrl, resolveScrapeEnv, type ScrapeEnv } from "../playwright/config.js";
-import { collectVacancyIdsFromSearch } from "../playwright/search.js";
-import { scrapeVacancyDetailById } from "../playwright/vacancy-page.js";
+import { getPlaywrightAdapter } from "../playwright/adapter.js";
+import { resolveScrapeEnv, type ScrapeEnv } from "../playwright/config.js";
+import type { JobBoardId } from "../providers/types.js";
 import { sleep } from "../utils/sleep.js";
 import { logInfo, logScrapeFail } from "../utils/log.js";
 import { findExistingVacancyScrapeState, upsertScrapedVacancy } from "./upsert-vacancy.js";
 import { cleanupStaleVacanciesIfInline, type RetentionCleanupResult } from "./vacancy-retention.js";
 
 export type ScrapeSyncResult = {
+  provider: JobBoardId;
   keyword: string;
   searchUrl: string;
   totalReported: number | null;
@@ -33,11 +31,14 @@ export type ScrapeSyncResult = {
 export async function syncVacanciesFromScrape(
   options?: Partial<ScrapeEnv>,
 ): Promise<ScrapeSyncResult> {
-  const env = { ...resolveScrapeEnv(), ...options };
+  const boardId = options?.boardId ?? "hh";
+  const adapter = getPlaywrightAdapter(boardId);
+  const env = { ...resolveScrapeEnv(boardId), ...options };
   const { searchKeyword: keyword, baseUrl } = env;
-  const searchUrl = buildSearchUrl(baseUrl, keyword);
+  const searchUrl = adapter.buildSearchUrl(baseUrl, keyword);
+  const logPrefix = adapter.board.sessionMetaProvider;
 
-  assertValidHhAuth(env.authStatePath, env.authMetaPath, baseUrl);
+  adapter.assertValidAuth(env.authStatePath, env.authMetaPath, baseUrl);
 
   const errors: string[] = [];
   const browser = await chromium.launch({ headless: env.headless });
@@ -45,27 +46,23 @@ export async function syncVacanciesFromScrape(
   try {
     const context = await browser.newContext({
       storageState: env.authStatePath,
-      locale: "ru-RU",
-      timezoneId: "Asia/Novosibirsk",
+      locale: adapter.board.browser.locale,
+      timezoneId: adapter.board.browser.timezoneId,
     });
     const page = await context.newPage();
 
-    logInfo(`[${HH_AUTH_PROVIDER}] scrape op=verify_session`);
-    const session = await assertHhSessionOnPage(page, baseUrl);
-    logInfo(`[${HH_AUTH_PROVIDER}] scrape op=session_ok base=${baseUrl} ${formatHhSessionUi(session.ui)}`);
+    logInfo(`[${logPrefix}] scrape op=verify_session`);
+    const session = await adapter.verifySession(page, baseUrl);
+    logInfo(`[${logPrefix}] scrape op=session_ok base=${baseUrl} url=${session.url}`);
 
     logInfo(`scrape op=search keyword="${keyword}"`);
-    const search = await collectVacancyIdsFromSearch(
-      page,
-      baseUrl,
-      keyword,
-    );
+    const search = await adapter.collectSearchIds(page, baseUrl, keyword);
     const vacancyIds = search.ids;
     logInfo(
       `search done ids=${vacancyIds.length} pages=${search.pagesVisited}/${search.totalPages} total_reported=${search.totalReported ?? "?"}`,
     );
 
-    const existing = await findExistingVacancyScrapeState("hh", vacancyIds);
+    const existing = await findExistingVacancyScrapeState(boardId, vacancyIds);
     let skippedExisting = 0;
     let upserted = 0;
     const total = vacancyIds.length;
@@ -75,24 +72,24 @@ export async function syncVacanciesFromScrape(
 
       if (existing.skip.has(externalId)) {
         skippedExisting++;
-        logInfo(`vacancy ${i + 1}/${total} provider=hh id=${externalId} skip (already in db)`);
+        logInfo(`vacancy ${i + 1}/${total} provider=${boardId} id=${externalId} skip (already in db)`);
         continue;
       }
 
       const reason = existing.refresh.has(externalId) ? "refresh (no description)" : "new";
-      logInfo(`vacancy ${i + 1}/${total} provider=hh id=${externalId} ${reason}`);
+      logInfo(`vacancy ${i + 1}/${total} provider=${boardId} id=${externalId} ${reason}`);
 
       try {
-        const detail = await scrapeVacancyDetailById(page, baseUrl, externalId);
+        const detail = await adapter.scrapeDetail(page, baseUrl, externalId);
         if (await upsertScrapedVacancy(detail)) {
           upserted++;
         } else {
-          errors.push(`provider=hh id=${externalId}: db upsert failed`);
+          errors.push(`provider=${boardId} id=${externalId}: db upsert failed`);
         }
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        logScrapeFail("hh", externalId, msg);
-        errors.push(`provider=hh id=${externalId}: ${msg}`);
+        logScrapeFail(boardId, externalId, msg);
+        errors.push(`provider=${boardId} id=${externalId}: ${msg}`);
       }
 
       await sleep(env.detailDelayMs);
@@ -107,6 +104,7 @@ export async function syncVacanciesFromScrape(
     const retention = await cleanupStaleVacanciesIfInline();
 
     return {
+      provider: boardId,
       keyword,
       searchUrl,
       totalReported: search.totalReported,
