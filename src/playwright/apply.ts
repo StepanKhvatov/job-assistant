@@ -4,12 +4,13 @@
  * Порядок:
  * 1. Открыть `/vacancy/{id}`
  * 2. Если вакансия в архиве — `skipped_archived`
- * 3. Если уже откликались — `already_applied`
- * 4. Нажать «Откликнуться»
- * 5. Понять экран: форма / мгновенный успех / анкета / «другая страна»
- * 6. Выбрать резюме по `CANDIDATE_PROFILE.targetRole`
- * 7. Вставить сопроводительное
- * 8. Submit и проверка текста успеха
+ * 3. Если вакансия недоступна соискателю — `skipped_unavailable`
+ * 4. Если уже откликались — `already_applied`
+ * 5. Нажать «Откликнуться»
+ * 6. Понять экран: форма / мгновенный успех / анкета / «другая страна»
+ * 7. Выбрать резюме по `CANDIDATE_PROFILE.targetRole`
+ * 8. Вставить сопроводительное
+ * 9. Submit и проверка текста успеха
  *
  * LinkedIn сюда не добавлять: другая поверхность (Easy Apply vs ATS).
  * Контракт: `src/playwright/adapter.ts`. Схема борда: `src/providers/hh.ts`.
@@ -37,6 +38,7 @@ export const APPLICATION_STATUS = {
   skippedForeignCountry: "skipped_foreign_country",
   skippedQuestionnaire: "skipped_questionnaire",
   skippedArchived: "skipped_archived",
+  skippedUnavailable: "skipped_unavailable",
   failed: "failed",
   unconfirmed: "unconfirmed",
 } as const;
@@ -53,6 +55,7 @@ export const APPLICATION_NO_RETRY_STATUSES = [
   APPLICATION_STATUS.skippedForeignCountry,
   APPLICATION_STATUS.skippedQuestionnaire,
   APPLICATION_STATUS.skippedArchived,
+  APPLICATION_STATUS.skippedUnavailable,
 ] as const;
 
 export type ApplicationStatus = (typeof APPLICATION_STATUS)[keyof typeof APPLICATION_STATUS];
@@ -74,6 +77,9 @@ const RESPOND_SELECTORS = [
 /** Заголовок на закрытой вакансии: «Вакансия в архиве». */
 const ARCHIVED_HEADING = 'h2[data-qa="bloko-header-2"]';
 const ARCHIVED_HEADING_TEXT = /вакансия в архиве/i;
+
+/** Карточка скрыта для текущего соискателя. */
+const UNAVAILABLE_TEXT = /вам недоступна эта вакансия/i;
 
 const RESPONSE_FORM = 'form[name="vacancy_response"], #RESPONSE_MODAL_FORM_ID';
 const RESUME_TRIGGER = '[data-qa="resume-title"], [data-qa="resume-detail"]';
@@ -150,6 +156,11 @@ async function isVacancyArchived(page: Page): Promise<boolean> {
   return (await heading.count()) > 0;
 }
 
+async function isVacancyUnavailable(page: Page): Promise<boolean> {
+  const notice = page.locator("div").filter({ hasText: UNAVAILABLE_TEXT });
+  return (await notice.count()) > 0;
+}
+
 async function clickRespondButton(page: Page, externalId: string): Promise<void> {
   for (const selector of RESPOND_SELECTORS) {
     const target = page.locator(selector).first();
@@ -210,7 +221,8 @@ type ApplySurfaceState =
   | { kind: "test_page" }
   | { kind: "foreign_country" }
   | { kind: "login_required" }
-  | { kind: "archived" };
+  | { kind: "archived" }
+  | { kind: "unavailable" };
 
 async function isLoginSurfaceVisible(page: Page): Promise<boolean> {
   if ((await hhGuestLoginLink(page).count()) > 0) {
@@ -278,6 +290,11 @@ async function waitForApplySurface(page: Page, initialUrl: string, externalId: s
     if (await isVacancyArchived(page)) {
       logApply(externalId, "surface", "kind=archived");
       return { kind: "archived" };
+    }
+
+    if (await isVacancyUnavailable(page)) {
+      logApply(externalId, "surface", "kind=unavailable");
+      return { kind: "unavailable" };
     }
 
     if (await isLoginSurfaceVisible(page)) {
@@ -719,15 +736,21 @@ export async function applyToVacancy(
   const pageUi = await readHhSessionUi(page);
   const respondCount = await countRespondButtons(page);
   const archived = await isVacancyArchived(page);
+  const unavailable = await isVacancyUnavailable(page);
   logApply(
     externalId,
     "page_loaded",
-    `url=${page.url()} ${formatHhSessionUi(pageUi)} respond_button=${respondCount > 0 ? "yes" : "no"} archived=${archived ? "yes" : "no"} note=respond_button_is_not_login_proof`,
+    `url=${page.url()} ${formatHhSessionUi(pageUi)} respond_button=${respondCount > 0 ? "yes" : "no"} archived=${archived ? "yes" : "no"} unavailable=${unavailable ? "yes" : "no"} note=respond_button_is_not_login_proof`,
   );
 
   if (archived) {
     logApply(externalId, "done", "status=skipped_archived");
     return { status: APPLICATION_STATUS.skippedArchived };
+  }
+
+  if (unavailable) {
+    logApply(externalId, "done", "status=skipped_unavailable");
+    return { status: APPLICATION_STATUS.skippedUnavailable };
   }
 
   await dismissBlockingOverlays(page, externalId);
@@ -768,6 +791,10 @@ export async function applyToVacancy(
       logApply(externalId, "done", "status=skipped_archived after=error");
       return { status: APPLICATION_STATUS.skippedArchived };
     }
+    if (await isVacancyUnavailable(page).catch(() => false)) {
+      logApply(externalId, "done", "status=skipped_unavailable after=error");
+      return { status: APPLICATION_STATUS.skippedUnavailable };
+    }
     if (await isForeignCountryPopupVisible(page).catch(() => false)) {
       await dismissForeignCountryPopup(page, externalId);
       logApply(externalId, "done", "status=skipped_foreign_country after=error");
@@ -798,6 +825,11 @@ export async function applyToVacancy(
   if (surface.kind === "archived") {
     logApply(externalId, "done", "status=skipped_archived");
     return { status: APPLICATION_STATUS.skippedArchived };
+  }
+
+  if (surface.kind === "unavailable") {
+    logApply(externalId, "done", "status=skipped_unavailable");
+    return { status: APPLICATION_STATUS.skippedUnavailable };
   }
 
   if (surface.kind === "foreign_country") {

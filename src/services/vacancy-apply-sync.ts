@@ -32,6 +32,7 @@ export type ApplySyncResult = {
   skippedForeignCountry: number;
   skippedQuestionnaire: number;
   skippedArchived: number;
+  skippedUnavailable: number;
   unconfirmed: number;
   failed: number;
   retention: RetentionCleanupResult;
@@ -148,6 +149,7 @@ export async function applyToRankedVacancies(
   let skippedForeignCountry = 0;
   let skippedQuestionnaire = 0;
   let skippedArchived = 0;
+  let skippedUnavailable = 0;
   let unconfirmed = 0;
   let failed = 0;
 
@@ -213,6 +215,10 @@ export async function applyToRankedVacancies(
             skippedArchived++;
             logInfo(`apply skip ${ref} (archived)`);
             break;
+          case APPLICATION_STATUS.skippedUnavailable:
+            skippedUnavailable++;
+            logInfo(`apply skip ${ref} (unavailable)`);
+            break;
           case APPLICATION_STATUS.unconfirmed:
             unconfirmed++;
             logInfo(`apply unconfirmed ${ref}`);
@@ -252,7 +258,7 @@ export async function applyToRankedVacancies(
   const retention = await cleanupStaleVacanciesIfInline();
 
   logInfo(
-    `apply finished applied=${applied} failed=${failed} unconfirmed=${unconfirmed} already=${skippedAlready} no_button=${skippedNoButton} foreign_country=${skippedForeignCountry} questionnaire=${skippedQuestionnaire} archived=${skippedArchived}`,
+    `apply finished applied=${applied} failed=${failed} unconfirmed=${unconfirmed} already=${skippedAlready} no_button=${skippedNoButton} foreign_country=${skippedForeignCountry} questionnaire=${skippedQuestionnaire} archived=${skippedArchived} unavailable=${skippedUnavailable}`,
   );
 
   return {
@@ -265,6 +271,7 @@ export async function applyToRankedVacancies(
     skippedForeignCountry,
     skippedQuestionnaire,
     skippedArchived,
+    skippedUnavailable,
     unconfirmed,
     failed,
     retention,

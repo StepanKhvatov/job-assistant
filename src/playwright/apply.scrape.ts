@@ -40,6 +40,7 @@ test("apply to vacancy", async ({ page }) => {
     APPLICATION_STATUS.noButton,
     APPLICATION_STATUS.skippedQuestionnaire,
     APPLICATION_STATUS.skippedArchived,
+    APPLICATION_STATUS.skippedUnavailable,
     APPLICATION_STATUS.unconfirmed,
     APPLICATION_STATUS.failed,
   ]).toContain(result.status);
