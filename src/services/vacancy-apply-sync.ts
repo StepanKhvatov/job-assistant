@@ -1,6 +1,7 @@
 /**
- * Отклик по уже проранжированным вакансиям hh.ru.
+ * Отклик по уже проранжированным вакансиям.
  *
+ * Борд задаётся адаптером (`getPlaywrightAdapter`). HH — единственный active.
  * Берёт vacancies с score ≥ порога, без блокирующего applications.status.
  * Письмо: DeepSeek, иначе content/cover-letter.md.
  */
@@ -11,14 +12,10 @@ import { loadCoverLetter } from "../config/load-content.js";
 import { resolveRankEnv } from "../config/rank-env.js";
 import { prisma } from "../db/client.js";
 import { writeCoverLetterWithDeepSeek } from "../integrations/deepseek/client.js";
-import {
-  applyToVacancy,
-  APPLICATION_NO_RETRY_STATUSES,
-  APPLICATION_STATUS,
-} from "../playwright/apply.js";
-import { assertHhSessionOnPage, formatHhSessionUi } from "../playwright/auth-session.js";
-import { assertValidHhAuth, HH_AUTH_PROVIDER } from "../playwright/auth.js";
+import { getPlaywrightAdapter } from "../playwright/adapter.js";
+import { APPLICATION_NO_RETRY_STATUSES, APPLICATION_STATUS } from "../playwright/apply.js";
 import { resolveScrapeEnv } from "../playwright/config.js";
+import type { JobBoardId } from "../providers/types.js";
 import { buildCoverLetterMessages } from "../prompts/cover-letter.js";
 import { logInfo, vacancyRef } from "../utils/log.js";
 import { sleep } from "../utils/sleep.js";
@@ -26,11 +23,10 @@ import { truncate } from "../utils/text.js";
 import { cleanupStaleVacanciesIfInline, type RetentionCleanupResult } from "./vacancy-retention.js";
 
 export type ApplySyncResult = {
+  provider: JobBoardId;
   minScore: number;
-  dryRun: boolean;
   candidates: number;
   applied: number;
-  dryRunCount: number;
   skippedAlready: number;
   skippedNoButton: number;
   skippedForeignCountry: number;
@@ -108,21 +104,24 @@ async function buildApplyCoverLetter(
 }
 
 export async function applyToRankedVacancies(
-  options?: Partial<ApplyEnv>,
+  options?: Partial<ApplyEnv> & { boardId?: JobBoardId },
 ): Promise<ApplySyncResult> {
-  const applyEnv = { ...resolveApplyEnv(), ...options };
-  const scrapeEnv = resolveScrapeEnv();
+  const boardId = options?.boardId ?? "hh";
+  const adapter = getPlaywrightAdapter(boardId);
+  const applyEnv = { ...resolveApplyEnv(boardId), ...options };
+  const scrapeEnv = resolveScrapeEnv(boardId);
   const fallbackCoverLetter = loadCoverLetter();
+  const logPrefix = adapter.board.sessionMetaProvider;
 
   if (!fallbackCoverLetter) {
     throw new Error("content/cover-letter.md is empty");
   }
 
-  assertValidHhAuth(scrapeEnv.authStatePath, scrapeEnv.authMetaPath, scrapeEnv.baseUrl);
+  adapter.assertValidAuth(scrapeEnv.authStatePath, scrapeEnv.authMetaPath, scrapeEnv.baseUrl);
 
   const vacancies = await prisma.vacancy.findMany({
     where: {
-      provider: "hh",
+      provider: boardId,
       applications: {
         none: { status: { in: [...APPLICATION_NO_RETRY_STATUSES] } },
       },
@@ -138,12 +137,11 @@ export async function applyToRankedVacancies(
   const toApply = vacancies.slice(0, applyEnv.maxPerRun);
 
   logInfo(
-    `[${HH_AUTH_PROVIDER}] apply start candidates=${toApply.length} min_score=${applyEnv.minScore} dry_run=${applyEnv.dryRun ? "yes" : "no"}`,
+    `[${logPrefix}] apply start candidates=${toApply.length} min_score=${applyEnv.minScore}`,
   );
 
   const errors: string[] = [];
   let applied = 0;
-  let dryRunCount = 0;
   let skippedAlready = 0;
   let skippedNoButton = 0;
   let skippedForeignCountry = 0;
@@ -156,14 +154,14 @@ export async function applyToRankedVacancies(
   try {
     const context = await browser.newContext({
       storageState: scrapeEnv.authStatePath,
-      locale: "ru-RU",
-      timezoneId: "Asia/Novosibirsk",
+      locale: adapter.board.browser.locale,
+      timezoneId: adapter.board.browser.timezoneId,
     });
     const page = await context.newPage();
 
-    logInfo(`[${HH_AUTH_PROVIDER}] apply op=verify_session`);
-    const session = await assertHhSessionOnPage(page, scrapeEnv.baseUrl);
-    logInfo(`[${HH_AUTH_PROVIDER}] apply op=session_ok base=${scrapeEnv.baseUrl} ${formatHhSessionUi(session.ui)}`);
+    logInfo(`[${logPrefix}] apply op=verify_session`);
+    const session = await adapter.verifySession(page, scrapeEnv.baseUrl);
+    logInfo(`[${logPrefix}] apply op=session_ok base=${scrapeEnv.baseUrl} url=${session.url}`);
 
     for (let i = 0; i < toApply.length; i++) {
       const vacancy = toApply[i];
@@ -174,12 +172,11 @@ export async function applyToRankedVacancies(
 
       try {
         coverLetter = await buildApplyCoverLetter(vacancy, fallbackCoverLetter);
-        const result = await applyToVacancy(
+        const result = await adapter.applyToVacancy(
           page,
           scrapeEnv.baseUrl,
           vacancy.externalId,
           coverLetter,
-          applyEnv.dryRun,
         );
 
         await saveApplication(
@@ -193,10 +190,6 @@ export async function applyToRankedVacancies(
           case APPLICATION_STATUS.applied:
             applied++;
             logInfo(`apply ok ${ref}`);
-            break;
-          case APPLICATION_STATUS.dryRun:
-            dryRunCount++;
-            logInfo(`apply dry_run ${ref}`);
             break;
           case APPLICATION_STATUS.alreadyApplied:
             skippedAlready++;
@@ -253,15 +246,14 @@ export async function applyToRankedVacancies(
   const retention = await cleanupStaleVacanciesIfInline();
 
   logInfo(
-    `apply finished applied=${applied} dry_run=${dryRunCount} failed=${failed} unconfirmed=${unconfirmed} already=${skippedAlready} no_button=${skippedNoButton} foreign_country=${skippedForeignCountry} questionnaire=${skippedQuestionnaire}`,
+    `apply finished applied=${applied} failed=${failed} unconfirmed=${unconfirmed} already=${skippedAlready} no_button=${skippedNoButton} foreign_country=${skippedForeignCountry} questionnaire=${skippedQuestionnaire}`,
   );
 
   return {
+    provider: boardId,
     minScore: applyEnv.minScore,
-    dryRun: applyEnv.dryRun,
     candidates: toApply.length,
     applied,
-    dryRunCount,
     skippedAlready,
     skippedNoButton,
     skippedForeignCountry,

@@ -1,8 +1,10 @@
 # Автоотклик (Playwright)
 
-Без Telegram. По умолчанию шаг `apply` использует `content/cover-letter.md` как fallback и пытается сгенерировать короткое письмо под вакансию через DeepSeek.
+Без Telegram. Шаг `apply` использует `content/cover-letter.md` как fallback и пытается сгенерировать короткое письмо под вакансию через DeepSeek.
 
 Сессия должна быть живой: [AUTH.md](./AUTH.md). LinkedIn apply — только в схеме, рантайма нет: [PROVIDERS.md](./PROVIDERS.md).
+
+Отклик **отправляется** (кнопка Submit нажимается). Старые записи `applications.status = dry_run` можно повторить.
 
 ## Два способа запуска отклика
 
@@ -11,7 +13,7 @@
 | **`npm run hh:apply`** | Скрипт `scripts/hh-apply-once.ts` | ✅ пишет |
 | **`npm run playwright:apply`** | Тест `src/playwright/apply.scrape.ts` | ❌ только UI |
 
-В Test Explorer видны только файлы `*.scrape.ts` и `auth.setup.ts`. Логика отклика общая: `src/playwright/apply.ts`.
+В Test Explorer видны только файлы `*.scrape.ts` и `auth.setup.ts`. Логика отклика HH: `src/playwright/apply.ts`, вызов через `getPlaywrightAdapter("hh")`.
 
 ## Цепочка (продакшен)
 
@@ -23,37 +25,35 @@ npm run hh:apply     # отклик на hh.ru → applications
 
 ## Тест одной вакансии (Playwright UI)
 
+Реальный отклик, без записи в БД:
+
 ```bash
 # в .env: HH_VACANCY_ID=132469416
 npm run playwright:apply
 ```
 
-По умолчанию `APPLY_DRY_RUN=true` — форма заполняется, «Отправить» не нажимается.
-
 Полный прогон (с логином):
 
 ```bash
-npm run playwright:auth
+HEADLESS=false npm run playwright:auth
 npm run hh:scrape && npm run ai:rank && npm run hh:apply
 ```
 
 ## Env
 
+Дефолты в коде / схеме борда. Переопределять только если нужно:
+
 ```env
 APPLY_MIN_SCORE=75
 APPLY_MAX_PER_RUN=30
-APPLY_MAX_VACANCIES=30
 APPLY_DELAY_MS=3000
-APPLY_DRY_RUN=true   # false — реальная отправка отклика
 ```
-
-`APPLY_MAX_VACANCIES` — понятный alias для тестов; если задан, имеет приоритет над `APPLY_MAX_PER_RUN`.
 
 ## Кого откликаем
 
 - Есть `analysis` с `score >= APPLY_MIN_SCORE`
 - Нет записи с блокирующим статусом: `applied`, `already_applied`, `skipped_foreign_country`, `skipped_questionnaire`
-- Повтор возможен после `dry_run`, `failed`, `unconfirmed`, `no_response_button` (например `APPLY_DRY_RUN=false`)
+- Повтор возможен после `dry_run` (legacy), `failed`, `unconfirmed`, `no_response_button`
 - Сортировка: сначала выше score
 
 ## Сопроводительное
@@ -70,11 +70,11 @@ APPLY_DRY_RUN=true   # false — реальная отправка отклик�
 | status | Значение |
 | ------ | -------- |
 | `applied` | Отклик отправлен |
-| `dry_run` | Форма заполнена, submit не нажат (`APPLY_DRY_RUN=true`) |
+| `dry_run` | Legacy: форма была заполнена без submit. Новые записи не создаются, повтор возможен |
 | `already_applied` | Уже откликались на hh.ru |
 | `no_response_button` | Нет кнопки отклика |
 | `skipped_foreign_country` | Popup «вакансия в другой стране» — пропуск |
-| `skipped_questionnaire` | Анкета/вопросы работодателя (`startedWithQuestion=true`) — автоматический отклик невозможен |
+| `skipped_questionnaire` | Анкета/вопросы работодателя — автоматический отклик невозможен |
 | `failed` | Ошибка UI / скрипта |
 | `unconfirmed` | Submit нажат, текст успеха не появился — не считаем отклик состоявшимся, повтор возможен |
 
@@ -82,4 +82,4 @@ APPLY_DRY_RUN=true   # false — реальная отправка отклик�
 
 ## Риски
 
-Капча, лимиты hh.ru — держите `APPLY_MAX_VACANCIES` / `APPLY_MAX_PER_RUN` низким и `APPLY_DELAY_MS` ≥ 3000.
+Капча, лимиты hh.ru — держите `APPLY_MAX_PER_RUN` низким и `APPLY_DELAY_MS` ≥ 3000 (или не задавайте: возьмётся из схемы борда).

@@ -26,7 +26,6 @@ jobs:
       HH_AUTH_STATE_B64: ${{ secrets.HH_AUTH_STATE_B64 }}
       HH_AUTH_META_B64: ${{ secrets.HH_AUTH_META_B64 }}
       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-      APPLY_DRY_RUN: ${{ secrets.APPLY_DRY_RUN || 'true' }}
       RANK_LIMIT: "100"
       APPLY_MAX_PER_RUN: "30"
       HEADLESS: "true"

@@ -7,7 +7,7 @@ export const CANDIDATE_PROFILE = {
   targetRole: "Frontend-разработчик",
 
   /**
-   * Фраза для Playwright-поиска (`?text=`), если не задан HH_SCRAPE_KEYWORD / HH_SEARCH_TEXT.
+   * Фраза для Playwright-поиска (`?text=`), если не задан HH_SEARCH_KEYWORD.
    * Пробелы и кириллица — как в строке поиска на сайте («Frontend разработчик»).
    */
   defaultScrapeKeyword: "Frontend разработчик",

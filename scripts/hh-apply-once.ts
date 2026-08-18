@@ -11,7 +11,7 @@ logInfo(`operation=hh:apply summary ${JSON.stringify(result)}`);
 
 await prisma.$disconnect();
 
-const succeeded = result.applied + result.dryRunCount;
+const succeeded = result.applied;
 if (result.errors.length > 0 && succeeded === 0) {
   process.exit(1);
 }

@@ -79,6 +79,10 @@ export const HH_BOARD = {
   identity: {
     urlIdPattern: "/vacancy/{id}",
   },
+  browser: {
+    locale: "ru-RU",
+    timezoneId: "Asia/Novosibirsk",
+  },
   pipeline: [
     {
       id: "auth",
@@ -123,7 +127,6 @@ export const HH_BOARD = {
     notes: [
       "Поиск ограничен area=113 (Россия).",
       "Уже сохранённые (provider, external_id) повторно не парсятся.",
-      "APPLY_DRY_RUN=true по умолчанию — кнопка «Отправить» не нажимается.",
     ],
   },
   risks: [

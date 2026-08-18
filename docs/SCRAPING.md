@@ -6,7 +6,7 @@
 
 ## Поток
 
-1. **Один раз локально:** `npm run playwright:auth` — логин на **hh.ru** (`HH_EMAIL` / `HH_PASSWORD`), при капче — `HH_SCRAPE_HEADLESS=false`
+1. **Один раз локально:** `npm run playwright:auth` — логин на **hh.ru** (`HH_EMAIL` / `HH_PASSWORD`), при капче — `HEADLESS=false`
 2. Cookies → `.auth/hh-user.json`, метаданные → `.auth/hh-session.meta.json`
 3. **Каждый запуск:** `hh:scrape` / `hh:apply` / `hh:pipeline` используют сохранённую сессию (без логина)
 4. Перед scrape/apply — проверка: открывается `/applicant/vacancies` без редиректа на login/captcha
@@ -30,7 +30,7 @@ npm run hh:run
 npm run hh:scrape
 
 # Первый логин или обновление сессии после капчи/истечения
-HH_SCRAPE_HEADLESS=false npm run playwright:auth
+HEADLESS=false npm run playwright:auth
 
 # Экспорт сессии в GitHub Secrets
 npm run hh:auth:export
@@ -40,7 +40,7 @@ npm run hh:auth:export
 
 | Параметр | Нужен | Описание |
 | -------- | ----- | -------- |
-| `text` | да | Одна фраза (`HH_SCRAPE_KEYWORD`), UTF-8 |
+| `text` | да | Одна фраза (`HH_SEARCH_KEYWORD` или секция в candidate-profile.md), UTF-8 |
 | `area` | да | `113` — Россия |
 | `search_field=name` | опционально | Только в названии вакансии |
 | `page` | нет | Пагинация через клик `pager-next` в браузере |
@@ -72,7 +72,7 @@ npm run hh:auth:export
 | Капча / 2FA                  | Логин только локально (`playwright:auth`), сессия в secret  |
 | Истекшая сессия в CI         | `hh:auth:export` → обновить `HH_AUTH_STATE_B64`             |
 | Смена вёрстки hh.ru          | селекторы `data-qa` + fallback                              |
-| Блокировка за частые запросы | `HH_SCRAPE_DETAIL_DELAY_MS`, лимиты страниц/вакансий        |
+| Блокировка за частые запросы | `SCRAPE_DELAY_MS` (или схема борда), лимиты страниц/вакансий |
 | ToS hh.ru                    | личное использование, низкая частота, без массовых откликов |
 
 ## Отличие от API-пути

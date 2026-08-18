@@ -80,7 +80,7 @@ npm run hh:run
 Первый раз или после истечения сессии — логин вручную (капча в headed-режиме):
 
 ```bash
-HH_SCRAPE_HEADLESS=false npm run playwright:auth
+HEADLESS=false npm run playwright:auth
 ```
 
 Проверка и обновление cookies: [docs/AUTH.md](docs/AUTH.md).
@@ -126,7 +126,7 @@ npm run ai:rank
 - ручной запуск: **Actions → HH Pipeline → Run workflow**
 - шаги: проверка сессии → scrape → rank → apply → cleanup
 - логин в CI **не выполняется** — только cookies из secret; как их обновить: [docs/AUTH.md](docs/AUTH.md)
-- `APPLY_DRY_RUN` по умолчанию `true` (секрет можно поставить в `false` для реальной отправки)
+- `hh:apply` отправляет отклики (Submit нажимается)
 - `RETENTION_INLINE=false` — чистка вакансий один раз в конце, не после каждого шага
 
 Нужные GitHub Secrets:
@@ -136,7 +136,6 @@ npm run ai:rank
 - `HH_AUTH_STATE_B64` — slim base64 cookies hh.ru (`npm run hh:auth:export`, лимит GitHub 64 KB)
 - `HH_AUTH_META_B64` — base64 `.auth/hh-session.meta.json` (опционально)
 - `DEEPSEEK_API_KEY`
-- `APPLY_DRY_RUN` (`true` для безопасного dry-run, `false` для реальной отправки)
 
 `HH_EMAIL` / `HH_PASSWORD` в CI не нужны — только для локального `playwright:auth`.
 
@@ -165,7 +164,7 @@ npm run hh:sync
 | `npm run hh:scrape`       | Scrape без логина (нужна сессия в `.auth/`)   |
 | `npm run ai:rank`         | DeepSeek → score в `analyses`              |
 | `npm run db:cleanup`      | Удаление вакансий старше N дней (retention) |
-| `npm run hh:apply`        | Отклик по score (см. APPLY_DRY_RUN)         |
+| `npm run hh:apply`        | Отклик по score (реальная отправка)        |
 | `npm run hh:pipeline`     | restore → scrape → rank → apply             |
 | `npm run playwright:auth` | Логин → `.auth/hh-user.json` (локально)     |
 | `npm run hh:auth:check`   | Проверка, что cookies живые                 |

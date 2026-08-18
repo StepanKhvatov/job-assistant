@@ -7,7 +7,7 @@
  *   3. Rank     — общий DeepSeek, не знает про HH/LinkedIn
  *   4. Apply    — снова адаптер борда
  *
- * Добавить сервис = файл схемы + адаптеры scrape/apply.
+ * Добавить сервис = файл схемы + объект `JobBoardPlaywrightAdapter`.
  * В БД: `provider` + `externalId`. Не копировать `HH_*` в новый адаптер.
  */
 

@@ -53,7 +53,7 @@ export async function hhSyncRoutes(app: FastifyInstance) {
     );
     const detailDelayMs = Math.min(
       5000,
-      Math.max(0, Number.parseInt(app.config.HH_DETAIL_DELAY_MS ?? "350", 10) || 350),
+      Math.max(0, Number.parseInt(app.config.HH_API_DETAIL_DELAY_MS ?? "350", 10) || 350),
     );
 
     const includeOffice = app.config.HH_INCLUDE_OFFICE !== "false";
@@ -64,7 +64,7 @@ export async function hhSyncRoutes(app: FastifyInstance) {
       Math.max(1, Number.parseInt(app.config.HH_MAX_VACANCIES_DETAIL ?? "200", 10) || 200),
     );
 
-    const baseUrl = app.config.HH_BASE_URL?.trim() || HH_DEFAULT_BASE_URL;
+    const baseUrl = app.config.HH_API_BASE_URL?.trim() || HH_DEFAULT_BASE_URL;
 
     const result = await syncVacanciesFromHh({
       searchText,

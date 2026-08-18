@@ -14,3 +14,14 @@ export type ScrapedVacancyDetail = {
   description: string | null;
   publishedAt: Date | null;
 };
+
+export type SearchCollectionResult = {
+  ids: string[];
+  totalReported: number | null;
+  totalPages: number;
+  pagesVisited: number;
+};
+
+export type SessionAlive = {
+  url: string;
+};

@@ -1,9 +1,7 @@
 import { gunzipSync, gzipSync } from "node:zlib";
 
-import { HH_BOARD } from "../providers/hh.js";
-
-/** Playwright storageState shape (subset used for HH session export). */
-export type HhStorageState = {
+/** Playwright storageState (cookies + optional origins). */
+export type PlaywrightStorageState = {
   cookies: Array<{
     name: string;
     value: string;
@@ -25,20 +23,20 @@ export type CookieExpirySummary = {
   earliestExpiry: Date | null;
 };
 
-const HH_COOKIE_DOMAIN = HH_BOARD.auth.primary.cookieDomainPattern;
-
 function isSessionCookie(expires: number): boolean {
   return !Number.isFinite(expires) || expires <= 0;
 }
 
-/** Cookies only from a full storageState; origins/localStorage are huge and not needed for HH auth. */
-export function slimHhAuthState(state: HhStorageState): HhStorageState {
-  const cookies = state.cookies.filter((c) => HH_COOKIE_DOMAIN.test(c.domain));
+export function slimAuthState(
+  state: PlaywrightStorageState,
+  cookieDomainPattern: RegExp,
+): PlaywrightStorageState {
+  const cookies = state.cookies.filter((c) => cookieDomainPattern.test(c.domain));
   return { cookies };
 }
 
 export function summarizeCookieExpiry(
-  state: HhStorageState,
+  state: PlaywrightStorageState,
   withinDays = 7,
 ): CookieExpirySummary {
   const nowSec = Date.now() / 1000;
@@ -74,8 +72,11 @@ export function summarizeCookieExpiry(
   };
 }
 
-export function encodeHhAuthStateForSecret(state: HhStorageState): string {
-  const slim = slimHhAuthState(state);
+export function encodeAuthStateForSecret(
+  state: PlaywrightStorageState,
+  cookieDomainPattern: RegExp,
+): string {
+  const slim = slimAuthState(state, cookieDomainPattern);
   const json = JSON.stringify(slim);
   if (Buffer.byteLength(json, "utf8") <= 48_000) {
     return Buffer.from(json, "utf8").toString("base64");
@@ -83,7 +84,7 @@ export function encodeHhAuthStateForSecret(state: HhStorageState): string {
   return `gz:${gzipSync(json).toString("base64")}`;
 }
 
-export function decodeHhAuthStateFromSecret(encoded: string): string {
+export function decodeAuthStateFromSecret(encoded: string): string {
   const trimmed = encoded.trim();
   if (trimmed.startsWith("gz:")) {
     return gunzipSync(Buffer.from(trimmed.slice(3), "base64")).toString("utf8");
@@ -97,8 +98,8 @@ export function decodeHhAuthStateFromSecret(encoded: string): string {
   return buf.toString("utf8");
 }
 
-export function parseHhAuthStateJson(json: string): HhStorageState {
-  const parsed = JSON.parse(json) as HhStorageState;
+export function parseAuthStateJson(json: string): PlaywrightStorageState {
+  const parsed = JSON.parse(json) as PlaywrightStorageState;
   if (!Array.isArray(parsed.cookies)) {
     throw new Error("decoded JSON has no cookies array");
   }

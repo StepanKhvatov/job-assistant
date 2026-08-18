@@ -13,35 +13,26 @@ DIRECT_URL=
 HH_EMAIL=
 HH_PASSWORD=
 DEEPSEEK_API_KEY=
-APPLY_DRY_RUN=true
 ```
 
 Поисковая фраза — секция **«Поиск на hh.ru»** в `content/candidate-profile.md` (не в `.env`).
 Опционально переопределить: `HH_SEARCH_KEYWORD=...`
 
-Остальное — дефолты в `getEnv()` (score, retention, `HH_BASE_URL=https://novosibirsk.hh.ru`).
-
-## Алиасы (старые имена)
-
-| Было | Читается как |
-| ---- | ------------ |
-| `HH_SCRAPE_KEYWORD` | `HH_SEARCH_KEYWORD` |
-| `HH_SCRAPE_BASE_URL` | `HH_BASE_URL` |
-| `HH_SCRAPE_DETAIL_DELAY_MS` | `SCRAPE_DELAY_MS` |
-| `HH_SCRAPE_HEADLESS` | `HEADLESS` |
-| `AI_RANK_LIMIT` | `RANK_LIMIT` |
-| `VACANCY_RETENTION_DAYS` | `RETENTION_DAYS` |
+Остальное — дефолты в `getEnv()` и в схеме борда (`src/providers/hh.ts`: задержки scrape/apply).
 
 ## CI (GitHub Actions)
 
 | Переменная | Обязательно | Описание |
 | ---------- | ----------- | -------- |
-| `HH_AUTH_STATE_B64` | да (в CI) | Slim export: только cookies `*.hh.ru` (~11 KB), не весь storageState — `npm run hh:auth:export` |
+| `DATABASE_URL` | да | Transaction pooler Supabase (`:6543`, `?pgbouncer=true`) |
+| `DIRECT_URL` | да (migrate) | Session pooler (`:5432`) |
+| `HH_AUTH_STATE_B64` | да (в CI) | Slim export cookies `*.hh.ru` — `npm run hh:auth:export` |
 | `HH_AUTH_META_B64` | нет | Base64 `.auth/hh-session.meta.json` |
+| `DEEPSEEK_API_KEY` | да (rank/apply) | Ключ DeepSeek |
 
-`DATABASE_URL` — полный URI из Supabase (Transaction pooler, :6543, `?pgbouncer=true`). Хост должен быть вида `….pooler.supabase.com`, не placeholder `base`. Пароль с `@` — URL-encode (`%40`). Проверка: `npm run db:check`.
+Локально `HH_AUTH_STATE_B64` не нужен — используется `.auth/` после `HEADLESS=false npm run playwright:auth`.
 
-Локально `HH_AUTH_STATE_B64` не нужен — используется `.auth/` после `playwright:auth`.
+Пароль в `DATABASE_URL` с `@` — URL-encode (`%40`). Проверка: `npm run db:check`.
 
 ## Отдельно от pipeline
 
@@ -49,11 +40,13 @@ APPLY_DRY_RUN=true
 
 | Переменные | Команда |
 | ---------- | ------- |
-| `HH_USER_AGENT`, `HH_ACCESS_TOKEN`, `HH_KEYWORDS` | `npm run hh:sync` |
-| `HH_MAX_PAGES_PER_QUERY`, `HH_MAX_VACANCIES_DETAIL` | только `npm run hh:sync` |
+| `HH_USER_AGENT`, `HH_ACCESS_TOKEN`, `HH_KEYWORDS` / `HH_SEARCH_TEXT` | `npm run hh:sync` |
+| `HH_MAX_PAGES_PER_QUERY`, `HH_MAX_VACANCIES_DETAIL`, `HH_API_BASE_URL` | только `npm run hh:sync` |
 | `HH_VACANCY_ID` | `npm run playwright:apply` |
-| `APPLY_MAX_VACANCIES` | `npm run hh:apply` |
+| `HEADLESS=false` | локальный `playwright:auth` (капча) |
 | `CRON_SECRET`, `PORT`, `HOST` | `npm run dev` |
+
+Задержки и лимиты (все с дефолтами): `SCRAPE_DELAY_MS`, `APPLY_DELAY_MS`, `APPLY_MIN_SCORE`, `APPLY_MAX_PER_RUN`, `RANK_LIMIT`, `RETENTION_DAYS`. Если не заданы scrape/apply delay — берутся из схемы борда.
 
 ## Типизация
 
@@ -64,9 +57,10 @@ APPLY_DRY_RUN=true
 | Поле | Значение |
 | ---- | -------- |
 | `HH_BASE_URL` | `https://novosibirsk.hh.ru` |
-| `SCRAPE_DELAY_MS` | 800 |
-| `RANK_LIMIT` | 100 |
-| `APPLY_MIN_SCORE` | 75 |
-| `APPLY_MAX_PER_RUN` | 30 |
-| `RETENTION_DAYS` | 45 |
+| `SCRAPE_DELAY_MS` | из схемы борда (HH: 800) |
+| `RANK_LIMIT` | `100` |
+| `APPLY_MIN_SCORE` | `75` |
+| `APPLY_MAX_PER_RUN` | `30` |
+| `APPLY_DELAY_MS` | из схемы борда (HH: 3000) |
+| `RETENTION_DAYS` | `45` |
 | `RETENTION_INLINE` | `true` локально; в CI `false` |

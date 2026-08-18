@@ -170,7 +170,7 @@ export function formatHhSessionExpiredError(result: Extract<HhSessionCheckResult
   return [
     `[${HH_AUTH_PROVIDER}] session not alive: ${reason}`,
     `last_url=${result.url} ${formatHhSessionUi(result.ui)}`,
-    "Local: HH_SCRAPE_HEADLESS=false npm run playwright:auth",
+    "Local: HEADLESS=false npm run playwright:auth",
     "CI: refresh GitHub secret HH_AUTH_STATE_B64 — see docs/AUTH.md",
   ].join("\n");
 }

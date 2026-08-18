@@ -1,10 +1,14 @@
 /**
- * Контракт джоб-борда.
+ * Контракт джоб-борда (данные, не классы).
  *
- * Один сервис = один файл схемы (`hh.ts`, `linkedin.ts`). Ранжирование
- * общее и сюда не входит: DeepSeek работает с уже нормализованной вакансией.
+ * Один сервис = файл схемы (`hh.ts`, `linkedin.ts`) + Playwright-адаптер
+ * (`src/playwright/adapter.ts`). Ранжирование общее и сюда не входит:
+ * DeepSeek работает с уже нормализованной вакансией.
  *
- * Поля `status: "planned"` — описание будущего адаптера, без рантайма.
+ * Иерархия классов под Playwright не нужна: селекторы и сценарии у бордов
+ * не пересекаются. Общий код — оркестрация в `src/services/*` и этот schema-объект.
+ *
+ * `status: "planned"` — описание будущего адаптера, без рантайма.
  */
 
 export const JOB_BOARD_IDS = ["hh", "linkedin"] as const;
@@ -76,6 +80,10 @@ export type JobBoardSchema = {
   identity: {
     /** Шаблон URL карточки. В БД id борда — `vacancies.external_id` + `provider`. */
     urlIdPattern: string;
+  };
+  browser: {
+    locale: string;
+    timezoneId: string;
   };
   pipeline: readonly PipelineStep[];
   limits: {
