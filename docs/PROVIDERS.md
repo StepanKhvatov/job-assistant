@@ -19,7 +19,7 @@ playwright:auth  →  .auth/hh-user.json
        ↓
 hh:auth:check    →  главная `{base}/` без `<a role="button" data-qa="login">`, затем GET /applicant/vacancies
        ↓
-hh:scrape        →  /search/vacancy?text=…&area=113  →  /vacancy/{id}  →  vacancies (provider=hh, external_id)
+hh:scrape        →  /search/vacancy?text=… (по каждой фразе) → union id → /vacancy/{id}  →  vacancies
        ↓
 ai:rank          →  analyses.score
        ↓

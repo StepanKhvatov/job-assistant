@@ -69,7 +69,7 @@ npm run dev
 
 Соискательский API закрыт. Основной путь — **скрапинг** под вашим аккаунтом.
 
-1. В `.env`: `DATABASE_URL`, `HH_EMAIL`, `HH_PASSWORD`, `DEEPSEEK_API_KEY` — поисковая фраза в `content/candidate-profile.md` (секция «Поиск на hh.ru»)
+1. В `.env`: `DATABASE_URL`, `HH_EMAIL`, `HH_PASSWORD`, `DEEPSEEK_API_KEY` — поисковые фразы в `content/candidate-profile.md` (секция «Поиск на hh.ru», список)
 
 2. Полный цикл без повторного логина (сессия в `.auth/`):
 

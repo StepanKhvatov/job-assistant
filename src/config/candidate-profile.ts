@@ -7,10 +7,14 @@ export const CANDIDATE_PROFILE = {
   targetRole: "Frontend-разработчик",
 
   /**
-   * Фраза для Playwright-поиска (`?text=`), если не задан HH_SEARCH_KEYWORD.
-   * Пробелы и кириллица — как в строке поиска на сайте («Frontend разработчик»).
+   * Фразы для Playwright-поиска (`?text=`), если секция в candidate-profile.md пуста
+   * и не задан HH_SEARCH_KEYWORD. Каждая фраза — отдельный scrape, не OR в одном `text`.
    */
-  defaultScrapeKeyword: "Frontend разработчик",
+  defaultScrapeKeywords: [
+    "Frontend разработчик",
+    "React разработчик",
+    "Frontend Engineer",
+  ] as const,
 
   /**
    * Ключевые слова по умолчанию для hh.ru API, если в .env не заданы HH_KEYWORDS / HH_SEARCH_TEXT.

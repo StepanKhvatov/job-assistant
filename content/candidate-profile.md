@@ -5,7 +5,9 @@
 
 ## Поиск на hh.ru
 
-Frontend разработчик
+- Frontend разработчик
+- React разработчик
+- Frontend Engineer
 
 ## Целевая роль
 

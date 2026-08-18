@@ -11,7 +11,7 @@ export type ScrapeEnv = {
   baseUrl: string;
   authStatePath: string;
   authMetaPath: string;
-  searchKeyword: string;
+  searchKeywords: string[];
   detailDelayMs: number;
   headless: boolean;
 };
@@ -31,7 +31,7 @@ export function resolveScrapeEnv(
     baseUrl,
     authStatePath: statePath,
     authMetaPath: metaPath,
-    searchKeyword: e.HH_SEARCH_KEYWORD,
+    searchKeywords: e.HH_SEARCH_KEYWORDS,
     detailDelayMs: e.SCRAPE_DELAY_MS ?? board.limits.scrapeDelayMs,
     headless: e.HEADLESS,
     ...overrides,

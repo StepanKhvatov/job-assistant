@@ -191,6 +191,64 @@ async function goToSearchPage(
   await waitForSearchResults(page, previousFirstId);
 }
 
+async function waitForSearchSurface(page: Page): Promise<"results" | "empty"> {
+  const deadline = Date.now() + 15_000;
+
+  while (Date.now() < deadline) {
+    const totalReported = await parseSearchResultTotal(page);
+    if (totalReported === 0) {
+      return "empty";
+    }
+
+    const hasCard = await page.locator(VACANCY_CARD).first().isVisible().catch(() => false);
+    if (hasCard) {
+      return "results";
+    }
+
+    const emptyHint = page.getByText(/ничего не найдено|вакансий не найдено|не нашлось ни одной вакансии/i).first();
+    if (await emptyHint.isVisible().catch(() => false)) {
+      return "empty";
+    }
+
+    await page.waitForTimeout(300);
+  }
+
+  const hasCard = await page.locator(VACANCY_CARD).first().isVisible().catch(() => false);
+  if (hasCard) {
+    return "results";
+  }
+
+  const totalReported = await parseSearchResultTotal(page);
+  if (totalReported === 0) {
+    return "empty";
+  }
+
+  throw new Error("Search results not found");
+}
+
+/** Слить id двух выдач: порядок первого списка, затем новые из второго. */
+export function unionVacancyIds(
+  collected: readonly string[],
+  incoming: readonly string[],
+): { ids: string[]; added: number; overlap: number } {
+  const seen = new Set(collected);
+  const ids = [...collected];
+  let added = 0;
+  let overlap = 0;
+
+  for (const id of incoming) {
+    if (seen.has(id)) {
+      overlap++;
+      continue;
+    }
+    seen.add(id);
+    ids.push(id);
+    added++;
+  }
+
+  return { ids, added, overlap };
+}
+
 /**
  * Поиск по `?text=`, обход номеров страниц pager-page с первой по последнюю.
  * Дедуп id в памяти; число страниц читается из блока пагинации.
@@ -204,7 +262,21 @@ export async function collectVacancyIdsFromSearch(
   const seen = new Set<string>();
 
   await page.goto(buildSearchUrl(baseUrl, keyword), { waitUntil: "domcontentloaded" });
-  await waitForSearchResults(page, null);
+  const surface = await waitForSearchSurface(page);
+  if (surface === "empty") {
+    const titleText = await readSearchTitleText(page);
+    const totalReported = await parseSearchResultTotal(page);
+    if (titleText) {
+      logInfo(`search title="${titleText}"`);
+    }
+    logInfo(`search empty keyword="${keyword}" total_reported=${totalReported ?? 0}`);
+    return {
+      ids: [],
+      totalReported: totalReported ?? 0,
+      totalPages: 0,
+      pagesVisited: 1,
+    };
+  }
 
   const titleText = await readSearchTitleText(page);
   const totalReported = await parseSearchResultTotal(page);

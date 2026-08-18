@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { loadSearchKeyword, normalizeSearchKeyword } from "./load-content.js";
+import { loadSearchKeywords, normalizeSearchKeyword } from "./load-content.js";
 
 const falseUnless = (v: string | undefined, defaultTrue = true) => {
   if (v === undefined) {
@@ -37,7 +37,8 @@ const envSchema = z.object({
 
   HH_EMAIL: z.string().optional(),
   HH_PASSWORD: z.string().optional(),
-  HH_SEARCH_KEYWORD: z.string(),
+  HH_SEARCH_KEYWORD: z.string().optional(),
+  HH_SEARCH_KEYWORDS: z.array(z.string().min(1)).min(1),
   HH_BASE_URL: z.string().url(),
 
   HEADLESS: z.boolean(),
@@ -72,12 +73,18 @@ const envSchema = z.object({
 
 export type AppEnv = z.infer<typeof envSchema>;
 
-function resolveSearchKeyword(raw: NodeJS.ProcessEnv): string {
+function resolveSearchKeywords(raw: NodeJS.ProcessEnv): string[] {
   const explicit = raw.HH_SEARCH_KEYWORD?.trim();
   if (explicit) {
-    return normalizeSearchKeyword(explicit);
+    return [normalizeSearchKeyword(explicit)];
   }
-  return loadSearchKeyword();
+  const fromProfile = loadSearchKeywords();
+  if (fromProfile.length === 0) {
+    throw new Error(
+      "No HH search keywords: fill «Поиск на hh.ru» in content/candidate-profile.md or set HH_SEARCH_KEYWORD",
+    );
+  }
+  return fromProfile;
 }
 
 function parseRawEnv(raw: NodeJS.ProcessEnv = process.env): AppEnv {
@@ -91,7 +98,8 @@ function parseRawEnv(raw: NodeJS.ProcessEnv = process.env): AppEnv {
 
     HH_EMAIL: raw.HH_EMAIL?.trim() || undefined,
     HH_PASSWORD: raw.HH_PASSWORD?.trim() || undefined,
-    HH_SEARCH_KEYWORD: resolveSearchKeyword(raw),
+    HH_SEARCH_KEYWORD: raw.HH_SEARCH_KEYWORD?.trim() || undefined,
+    HH_SEARCH_KEYWORDS: resolveSearchKeywords(raw),
     HH_BASE_URL: (raw.HH_BASE_URL ?? "https://novosibirsk.hh.ru").replace(/\/$/, ""),
 
     HEADLESS: falseUnless(raw.HEADLESS, true),

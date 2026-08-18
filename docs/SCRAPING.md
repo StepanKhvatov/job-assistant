@@ -13,12 +13,13 @@
 5. **CI:** `npm run hh:auth:restore` восстанавливает `.auth/` из `HH_AUTH_STATE_B64`
 6. Поиск по прямому URL (без инпута): `{baseUrl}/search/vacancy?text=...&search_field=name&items_on_page=50&area=113`  
    `area=113` — **Россия** (вакансии в РФ, без зарубежных).  
-   Фраза: секция **«Поиск на hh.ru»** в `content/candidate-profile.md` (или `HH_SEARCH_KEYWORD` в `.env`).
-7. Из `[data-qa="title"]` читается строка вида **«Найдено N вакансий»** → число страниц = `ceil(N / 50)`.
-8. На каждой странице — id карточек `[data-qa="vacancy-serp__vacancy"]`; переход делается прямым `goto` на тот же search URL с `page=0..N-1`.
-9. Дедуп id в памяти; в БД — unique `(provider, external_id)` + upsert; с описанием **не парсятся повторно**, без description — refresh.
-10. Карточка: `{baseUrl}/vacancy/{id}` → парсинг title, company, salary, description
-11. `upsert` в таблицу `vacancies` по `(provider=hh, external_id)`
+   Фразы: список в секции **«Поиск на hh.ru»** в `content/candidate-profile.md` (каждая строка `- фраза` — отдельный scrape).  
+   Отладка одной фразы: `HH_SEARCH_KEYWORD=...` в `.env` (не склеивать OR в один `text`).
+7. Для **каждой** фразы — свой SERP. Из `[data-qa="title"]` читается **«Найдено N вакансий»** → страниц = `ceil(N / 50)`. Пустая выдача не валит цикл.
+8. На каждой странице — id карточек `[data-qa="vacancy-serp__vacancy"]`; переход — `goto` того же search URL с `page=0..N-1`.
+9. Дедуп id **между фразами** (union в памяти), затем в БД unique `(provider, external_id)`; с описанием карточки **не парсятся повторно**, без description — refresh.
+10. Карточки — **один** проход по объединённому списку: `{baseUrl}/vacancy/{id}` → title, company, salary, description
+11. `upsert` в `vacancies` по `(provider=hh, external_id)`
 
 ## Команды
 
@@ -40,7 +41,7 @@ npm run hh:auth:export
 
 | Параметр | Нужен | Описание |
 | -------- | ----- | -------- |
-| `text` | да | Одна фраза (`HH_SEARCH_KEYWORD` или секция в candidate-profile.md), UTF-8 |
+| `text` | да | Одна фраза на запрос. Несколько фраз = несколько scrape, не OR в одном `text` |
 | `area` | да | `113` — Россия |
 | `search_field=name` | опционально | Только в названии вакансии |
 | `page` | нет | Пагинация через клик `pager-next` в браузере |
@@ -53,6 +54,10 @@ npm run hh:auth:export
 | Сообщение | Значение |
 | --------- | -------- |
 | `search title="Найдено N вакансий"` | Содержимое заголовка поиска из `[data-qa="title"]` |
+| `search empty keyword="…"` | По фразе 0 вакансий — цикл идёт дальше |
+| `scrape op=search keyword="…" N/M` | Отдельный SERP для фразы |
+| `search keyword done … unique_added=… overlap=…` | Новые id vs уже собранные другими фразами |
+| `search union ids=N` | Общий список id перед карточками |
 | `search total reported=N total_pages=M` | Всего вакансий по выдаче и сколько страниц нужно обойти |
 | `search page N/M: +K ids` | Собрано новых id с страницы (без дублей) |
 | `db ok provider=hh id=… title="…"` | Запись в Supabase успешна |

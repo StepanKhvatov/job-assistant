@@ -15,8 +15,8 @@ HH_PASSWORD=
 DEEPSEEK_API_KEY=
 ```
 
-Поисковая фраза — секция **«Поиск на hh.ru»** в `content/candidate-profile.md` (не в `.env`).
-Опционально переопределить: `HH_SEARCH_KEYWORD=...`
+Поисковые фразы — список в секции **«Поиск на hh.ru»** в `content/candidate-profile.md` (не в `.env`). Каждая фраза — отдельный scrape.
+Опционально одна фраза на прогон: `HH_SEARCH_KEYWORD=...` (не путать с `HH_KEYWORDS` для `hh:sync`).
 
 Остальное — дефолты в `getEnv()` и в схеме борда (`src/providers/hh.ts`: задержки scrape/apply).
 
