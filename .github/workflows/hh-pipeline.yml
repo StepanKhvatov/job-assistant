@@ -1,12 +1,13 @@
 name: HH Pipeline
 
-on:
-  schedule:
-    # Three times a day, MSK (UTC+3). Avoid minute :00 — GitHub often delays/drops scheduled runs at the top of the hour.
-    - cron: "17 5 * * *" # 08:17 MSK
-    - cron: "17 10 * * *" # 13:17 MSK
-    - cron: "17 15 * * *" # 18:17 MSK
-  workflow_dispatch:
+# Disabled until scrape/search on Actions is stable. Uncomment `on:` to re-enable.
+# on:
+#   schedule:
+#     # Three times a day, MSK (UTC+3). Avoid minute :00 — GitHub often delays/drops scheduled runs at the top of the hour.
+#     - cron: "17 5 * * *" # 08:17 MSK
+#     - cron: "17 10 * * *" # 13:17 MSK
+#     - cron: "17 15 * * *" # 18:17 MSK
+#   workflow_dispatch:
 
 concurrency:
   group: hh-pipeline
